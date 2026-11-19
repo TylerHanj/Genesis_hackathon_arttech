@@ -68,6 +68,24 @@ h2{font:600 24px/1.1 'Cormorant Garamond',serif;margin:0 0 10px}
 .sig{position:absolute;left:6cqw;right:6cqw;bottom:5cqw;font:500 5.6cqw/1.1 Caveat,cursive;opacity:.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 @media(prefers-reduced-motion:reduce){.ph.on,.kg,.grain{animation:none}}
 .auth{margin:40px auto}.thumbs{display:flex;gap:8px;flex-wrap:wrap}.thumbs div{position:relative;width:64px;height:80px;border-radius:8px;background-size:cover;background-position:center}.thumbs button{position:absolute;top:3px;right:3px;border:0;border-radius:99px;width:22px;height:22px;cursor:pointer;background:var(--ink);color:var(--bg)}.badge{font-size:12px;color:var(--mut)}.bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.btn.danger{background:#b3372b;color:#fff}.bar>*{max-width:100%}
+.map{position:relative;height:calc(100vh - 130px);min-height:520px;border:1px solid var(--line);border-radius:14px;overflow:hidden;touch-action:none;cursor:grab;background-color:var(--card);background-image:radial-gradient(var(--line) 1.4px,transparent 1.6px)}
+.world{position:absolute;left:0;top:0;transform-origin:0 0}
+.circ{position:absolute;border-radius:50%;border:2px dashed var(--cc);background:color-mix(in srgb,var(--cc) 13%,transparent)}
+.clab{position:absolute;left:50%;top:-42px;transform:translateX(-50%);white-space:nowrap;font:600 26px/1 'Cormorant Garamond',serif;cursor:grab;display:flex;gap:8px;align-items:center;padding:5px 12px;border-radius:99px;background:var(--bg);border:1px solid var(--cc);touch-action:none}
+.clab input{font:inherit;width:210px;background:none;border:0;border-bottom:1px solid var(--ink);color:inherit}
+.clab small{font:600 12px Manrope;color:var(--mut)}
+.clab button{border:0;background:none;color:var(--mut);cursor:pointer;font-size:18px;padding:0 2px}
+.mc{position:absolute;width:84px;cursor:grab;touch-action:none}
+.mc .scene{box-shadow:0 4px 14px #0004;border-radius:8px;transition:transform .15s,box-shadow .15s}
+.mc.dr{z-index:50;cursor:grabbing}
+.mc.dr .scene{transform:scale(1.1);box-shadow:0 14px 32px #0006}
+.mc span{display:block;margin:4px -14px 0;font:600 11px/1.2 Manrope;text-align:center;color:var(--ink)}
+.mtool{position:absolute;left:12px;top:12px;z-index:60;display:flex;gap:6px;flex-wrap:wrap;max-width:calc(100% - 24px);align-items:center}
+.mtool .btn{padding:8px 12px;font-size:13px;background:var(--bg);color:var(--ink);border:1px solid var(--line)}
+.mtool .btn.pri{background:var(--acc);color:var(--on);border-color:var(--acc)}
+.mhint{position:absolute;left:12px;bottom:10px;font-size:12px;color:var(--mut);pointer-events:none}
+.mempty{position:absolute;inset:0;display:grid;place-content:center;text-align:center;pointer-events:none}.mempty>div{pointer-events:auto}
+.story{font:italic 500 23px/1.5 'Cormorant Garamond',serif;margin:0 0 16px;padding-left:16px;border-left:3px solid var(--acc);white-space:pre-wrap}
 </style></head>
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true"><filter id="paint"><feTurbulence type="fractalNoise" baseFrequency=".018" numOctaves="2" seed="3" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="22"/></filter></svg>
@@ -77,7 +95,7 @@ h2{font:600 24px/1.1 'Cormorant Garamond',serif;margin:0 0 10px}
 <script src="https://cdn.jsdelivr.net/npm/htm@3.1.1/dist/htm.umd.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script>
-const {useState,useEffect,useMemo}=React;
+const {useState,useEffect,useMemo,useRef}=React;
 const html=htm.bind(React.createElement);
 const clamp=(x,a=0,b=1)=>Math.max(a,Math.min(b,x));
 const rng=s=>()=>{s|=0;s=s+0x6D2B79F5|0;let t=Math.imul(s^s>>>15,1|s);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296};
@@ -255,47 +273,92 @@ function NewDay({init,onSave,onCancel}){
 
 /* ---------- папка дня ---------- */
 function Folder({d,onBack,onSave,onDelete}){
- const st=d.style,s=d.song,[edit,setEdit]=useState(false),[ask,setAsk]=useState(false),voices=useVoices(),[vn,setVn]=useState(ls.get('dd-voice',''));
+ const st=d.style,s=d.song,[edit,setEdit]=useState(false),[ask,setAsk]=useState(false),[more,setMore]=useState(false),voices=useVoices(),[vn,setVn]=useState(ls.get('dd-voice',''));
  useEffect(()=>stopSpeak,[]);
  const sorted=[...voices].sort((a,b)=>vScore(b)-vScore(a)),voice=sorted.find(v=>v.name===vn)||sorted[0];
  if(edit)return html`<${NewDay} init=${d} onSave=${x=>{onSave(x);setEdit(false)}} onCancel=${()=>setEdit(false)}/>`;
- return html`<div><button class="btn ghost" onClick=${onBack}>К дневнику</button>
- <div class="split" style=${{marginTop:16}}><div><${Scene} d=${d}/>
-  <div class="bar" style=${{marginTop:10}}><${Player} s=${s}/></div>
-  <div class="bar" style=${{marginTop:10}}><button class="btn" onClick=${()=>speak(d,voice)}>Озвучить запись</button><button class="btn ghost" onClick=${stopSpeak}>Стоп</button><button class="btn ghost" onClick=${()=>setEdit(true)}>Изменить</button>
-   ${ask?html`<span>Удалить навсегда?</span><button class="btn danger" onClick=${()=>onDelete(d.id)}>Да, удалить</button><button class="btn ghost" onClick=${()=>setAsk(false)}>Отмена</button>`:html`<button class="btn ghost" onClick=${()=>setAsk(true)}>Удалить</button>`}</div>
-  ${sorted.length>0&&html`<label style=${{marginTop:12}}>Голос озвучки<select value=${voice?voice.name:''} onChange=${e=>{setVn(e.target.value);ls.set('dd-voice',e.target.value)}}>${sorted.map(v=>html`<option key=${v.name} value=${v.name}>${v.name}</option>`)}</select><span>Самые живые голоса помечены Natural или Online (Edge, Chrome).</span></label>`}</div>
-  <div><h2>Папка «${d.title}»</h2>
-   <ul class="files"><li>запись.txt</li><li>фото × ${d.photos.length}</li><li>песня: ${s.fileName||s.link||[s.artist,s.year].filter(Boolean).join(', ')||'—'}</li><li>воспоминание (${TECH[st.tech].name})</li><li>озвучка: голос ${st.voice.desc}</li></ul>
-   <p>${d.text}</p><h2 style=${{fontSize:20,marginTop:20}}>Почему день выглядит так</h2><ul class="why" style=${{paddingLeft:18}}>${st.why.map((w,k)=>html`<li key=${k}>${w}</li>`)}</ul>
-   <div style=${{display:'flex',gap:6}}>${[st.s1,st.s2,st.sa,st.si].map(c=>html`<span key=${c} style=${{width:34,height:34,borderRadius:8,background:c,border:'1px solid var(--line)'}}></span>`)}</div></div></div></div>`}
+ const mus=[s.artist,s.year].filter(Boolean).join(', ');
+ return html`<div><button class="btn ghost" onClick=${onBack}>К карте</button>
+ <div class="split" style=${{marginTop:16}}><div><${Scene} d=${d}/><div style=${{marginTop:10}}><${Player} s=${s}/></div></div>
+  <div><p class="badge">${fmt(d.date)}${mus?'  ·  ♪ '+mus:''}</p>
+   <h2 style=${{fontSize:42,marginBottom:16}}>${d.title}</h2>
+   <blockquote class="story">${d.text}</blockquote>
+   <div class="bar"><button class="btn" onClick=${()=>speak(d,voice)}>Озвучить</button><button class="btn ghost" onClick=${stopSpeak}>Стоп</button><button class="btn ghost" onClick=${()=>setEdit(true)}>Изменить</button>
+    ${ask?html`<span>Удалить навсегда?</span><button class="btn danger" onClick=${()=>onDelete(d.id)}>Да, удалить</button><button class="btn ghost" onClick=${()=>setAsk(false)}>Отмена</button>`:html`<button class="btn ghost" onClick=${()=>setAsk(true)}>Удалить</button>`}</div>
+   ${sorted.length>0&&html`<label style=${{marginTop:12,maxWidth:360}}>Голос озвучки<select value=${voice?voice.name:''} onChange=${e=>{setVn(e.target.value);ls.set('dd-voice',e.target.value)}}>${sorted.map(v=>html`<option key=${v.name} value=${v.name}>${v.name}</option>`)}</select><span>Самые живые голоса помечены Natural или Online (Edge, Chrome).</span></label>`}
+   <div style=${{marginTop:26}}><button class="btn ghost" onClick=${()=>setMore(!more)}>${more?'Скрыть объяснение':'Почему день выглядит так'}</button></div>
+   ${more&&html`<div class="card" style=${{marginTop:12}}><h2 style=${{fontSize:22}}>${TECH[st.tech].name}</h2><ul class="why" style=${{paddingLeft:18}}>${st.why.map((w,k)=>html`<li key=${k}>${w}</li>`)}</ul>
+    <div style=${{display:'flex',gap:6,margin:'12px 0'}}>${[st.s1,st.s2,st.sa,st.si].map(c=>html`<span key=${c} style=${{width:34,height:34,borderRadius:8,background:c,border:'1px solid var(--line)'}}></span>`)}</div>
+    <ul class="files"><li>запись.txt</li><li>фото × ${d.photos.length}</li><li>песня: ${s.fileName||s.link||mus||'—'}</li><li>воспоминание</li><li>озвучка: голос ${st.voice.desc}</li></ul></div>`}
+  </div></div></div>`}
 
-function Diary({days,onOpen,onSeed}){
- if(!days.length)return html`<div><p class="muted">Дневник пуст. Запишите первый день или загрузите примеры.</p><button class="btn" onClick=${onSeed}>Добавить 4 демо-дня</button></div>`;
- return html`<div><p class="muted" style=${{maxWidth:560}}>Все дни рядом: единые сетка, шрифты, место даты и подписи. Меняются палитра, обработка фото, фактура и ритм.</p>
- <div class="grid">${[...days].sort((a,b)=>b.date.localeCompare(a.date)).map(d=>html`<button key=${d.id} class="tile" onClick=${()=>onOpen(d.id)} aria-label=${d.title}><${Scene} d=${d} live=${false}/><b>${d.title}</b><small>${fmt(d.date)}</small></button>`)}</div></div>`}
+/* ---------- карта воспоминаний ---------- */
+const DEFCATS=[['monet','Тихие и тёплые',35],['kandinsky','Напряжение и работа',215],['minimal','Грусть и тишина',250],['collage','Яркие и шумные',8],['film','Ровные дни',90]].map(([k,n,h],i)=>({id:'c-'+k,name:n,x:Math.round(Math.cos(i*1.2566-1.5708)*380),y:Math.round(Math.sin(i*1.2566-1.5708)*380),r:190,color:`hsl(${h} 60% 55%)`}));
+let lastView=null;
+function MemoryMap({days,cats,onOpen,onMove,onCats,onSort,onSeed}){
+ const box=useRef(null),[v,setV]=useState(lastView||{x:400,y:300,k:.7}),[drag,setDrag]=useState(null),[name,setName]=useState(''),[add,setAdd]=useState(false),[ed,setEd]=useState(null);
+ useEffect(()=>{if(lastView)return;const r=box.current.getBoundingClientRect();setV({x:r.width/2,y:r.height/2+10,k:clamp(Math.min(r.width,r.height)/1050,.3,1)})},[]);
+ useEffect(()=>{lastView=v},[v]);
+ const zoom=(f,cx,cy)=>setV(o=>{const k=clamp(o.k*f,.25,2.2),r=k/o.k;return{k,x:cx-(cx-o.x)*r,y:cy-(cy-o.y)*r}});
+ const zoomC=f=>{const r=box.current.getBoundingClientRect();zoom(f,r.width/2,r.height/2)};
+ useEffect(()=>{const el=box.current,h=e=>{e.preventDefault();const r=el.getBoundingClientRect();zoom(e.deltaY<0?1.1:.9,e.clientX-r.left,e.clientY-r.top)};el.addEventListener('wheel',h,{passive:false});return()=>el.removeEventListener('wheel',h)},[]);
+ const dx=drag?drag.dx:0,dy=drag?drag.dy:0;
+ const cs=cats.map(c=>drag&&drag.type==='cat'&&drag.id===c.id?{...c,x:c.x+dx,y:c.y+dy}:c);
+ const catOf=d=>d.cat===undefined?(cats.some(c=>c.id==='c-'+d.style.tech)?'c-'+d.style.tech:null):d.cat;
+ const base=(d,list)=>{if(d.pos)return d.pos;const c=list.find(c=>c.id===catOf(d)),r=rng(hash(d.id));if(c){const a=r()*6.283,m=Math.sqrt(r())*c.r*.6;return{x:c.x+Math.cos(a)*m,y:c.y+Math.sin(a)*m}}return{x:-330+r()*660,y:700+r()*100}};
+ const show=d=>{const p=base(d,cs),mv=drag&&((drag.type==='card'&&drag.id===d.id)||(drag.type==='cat'&&d.pos&&catOf(d)===drag.id));return mv?{x:p.x+dx,y:p.y+dy}:p};
+ const finish=(type,id,ax,ay)=>{
+  if(type==='card'){const d=days.find(x=>x.id===id),p=base(d,cats),np={x:p.x+ax,y:p.y+ay};let best=null,bd=1e9;cats.forEach(c=>{const m=Math.hypot(np.x-c.x,np.y-c.y);if(m<c.r&&m<bd){best=c;bd=m}});onMove([{...d,pos:{x:Math.round(np.x),y:Math.round(np.y)},cat:best?best.id:null}])}
+  else{onCats(cats.map(x=>x.id===id?{...x,x:Math.round(x.x+ax),y:Math.round(x.y+ay)}:x));const mv=days.filter(d=>d.pos&&catOf(d)===id).map(d=>({...d,pos:{x:Math.round(d.pos.x+ax),y:Math.round(d.pos.y+ay)}}));if(mv.length)onMove(mv)}};
+ const begin=(e,type,id)=>{e.stopPropagation();const sx=e.clientX,sy=e.clientY,k=v.k;let moved=false;
+  const mv=ev=>{const ax=(ev.clientX-sx)/k,ay=(ev.clientY-sy)/k;if(Math.abs(ax*k)+Math.abs(ay*k)>5)moved=true;setDrag({type,id,dx:ax,dy:ay})};
+  const up=ev=>{window.removeEventListener('pointermove',mv);window.removeEventListener('pointerup',up);setDrag(null);if(!moved){if(type==='card')onOpen(id);return}finish(type,id,(ev.clientX-sx)/k,(ev.clientY-sy)/k)};
+  window.addEventListener('pointermove',mv);window.addEventListener('pointerup',up)};
+ const pan=e=>{const sx=e.clientX,sy=e.clientY,o=v,mv=ev=>setV({...o,x:o.x+ev.clientX-sx,y:o.y+ev.clientY-sy}),up=()=>{window.removeEventListener('pointermove',mv);window.removeEventListener('pointerup',up)};window.addEventListener('pointermove',mv);window.addEventListener('pointerup',up)};
+ const addCat=()=>{const n=name.trim();if(!n)return;const r=box.current.getBoundingClientRect();onCats([...cats,{id:'c'+Date.now(),name:n,x:Math.round((r.width/2-v.x)/v.k),y:Math.round((r.height/2-v.y)/v.k),r:170,color:`hsl(${hash(n)%360} 55% 55%)`}]);setName('');setAdd(false)};
+ const delCat=c=>{const mv=days.filter(d=>catOf(d)===c.id).map(d=>({...d,pos:base(d,cats),cat:null}));if(mv.length)onMove(mv);onCats(cats.filter(x=>x.id!==c.id))};
+ const rename=()=>{if(ed&&ed.value.trim())onCats(cats.map(c=>c.id===ed.id?{...c,name:ed.value.trim()}:c));setEd(null)};
+ const stop=e=>e.stopPropagation();
+ return html`<div class="map" ref=${box} onPointerDown=${pan} style=${{backgroundPosition:`${v.x}px ${v.y}px`,backgroundSize:`${28*v.k}px ${28*v.k}px`}}>
+  <div class="world" style=${{transform:`translate(${v.x}px,${v.y}px) scale(${v.k})`}}>
+   ${cs.map(c=>html`<div key=${c.id} class="circ" style=${{left:c.x-c.r,top:c.y-c.r,width:c.r*2,height:c.r*2,'--cc':c.color}}>
+    <div class="clab" onPointerDown=${e=>begin(e,'cat',c.id)} onDoubleClick=${()=>setEd({id:c.id,value:c.name})} title="Тяните, чтобы переместить круг. Двойной клик переименует.">
+     ${ed&&ed.id===c.id?html`<input autoFocus=${true} value=${ed.value} onPointerDown=${stop} onChange=${e=>setEd({...ed,value:e.target.value})} onBlur=${rename} onKeyDown=${e=>e.key==='Enter'&&rename()}/>`:html`<span>${c.name}</span>`}
+     <small>${days.filter(d=>catOf(d)===c.id).length}</small>
+     <button aria-label="Удалить категорию" onPointerDown=${stop} onClick=${()=>delCat(c)}>×</button></div></div>`)}
+   ${days.map(d=>{const p=show(d),on=drag&&drag.type==='card'&&drag.id===d.id;return html`<div key=${d.id} class=${'mc'+(on?' dr':'')} style=${{left:p.x-42,top:p.y-75}} onPointerDown=${e=>begin(e,'card',d.id)}><${Scene} d=${d} live=${false}/><span>${d.title}</span></div>`})}
+  </div>
+  <div class="mtool" onPointerDown=${stop}>
+   ${add?html`<input type="text" autoFocus=${true} placeholder="Название категории" value=${name} onChange=${e=>setName(e.target.value)} onKeyDown=${e=>e.key==='Enter'&&addCat()} style=${{width:180}}/><button class="btn pri" onClick=${addCat}>Создать</button><button class="btn" onClick=${()=>setAdd(false)}>Отмена</button>`
+    :html`<button class="btn pri" onClick=${()=>setAdd(true)}>+ Категория</button><button class="btn" onClick=${onSort} title="Вернуть карточки в круги по настроению дня">Разложить по настроению</button>`}
+   <button class="btn" aria-label="Приблизить" onClick=${()=>zoomC(1.25)}>+</button><button class="btn" aria-label="Отдалить" onClick=${()=>zoomC(.8)}>−</button></div>
+  ${!days.length&&html`<div class="mempty"><div onPointerDown=${stop}><p>Пока нет воспоминаний.</p><button class="btn" onClick=${onSeed}>Добавить 4 демо-дня</button></div></div>`}
+  <div class="mhint">Тяните карточки между кругами, клик открывает воспоминание. Колесо мыши меняет масштаб.</div></div>`}
 
 function System(){return html`<div style=${{display:'grid',gap:18,maxWidth:820}}>
- <div class="card"><h2>Идея</h2><p>Фотографии хранят, как выглядел день, но не как он ощущался. Дневник собирает из текста, фото и песни воспоминание, в котором настроение дня выражено формой, цветом и ритмом, и складывает всё в папку дня.</p></div>
+ <div class="card"><h2>Идея</h2><p>Фотографии хранят, как выглядел день, но не как он ощущался. Дневник собирает из текста, фото и песни воспоминание, в котором настроение дня выражено формой, цветом и ритмом, и складывает всё в папку дня. Папки лежат на карте воспоминаний: круги-категории можно создавать, переименовывать и двигать, а карточки переносятся между ними.</p></div>
  <div class="card"><h2>Единый язык</h2><p><b>Постоянно:</b> вертикальный кадр 9:16, дата сверху слева, название серифом (3–7 слов), рукописная подпись из первой фразы записи, фото всегда на всю рамку или в рамке по правилам приёма.</p><p><b>Меняется:</b> палитра (оттенок из смеси цвета фото и настроения), приём обработки, зерно, ритм смены кадров, скорость анимации, голос озвучки.</p></div>
  <div class="card"><h2>Художественные приёмы</h2><table><tbody>${Object.entries(TECH).map(([k,t])=>html`<tr key=${k}><th>${t.name}</th><td>${t.why}</td></tr>`)}</tbody></table></div>
  <div class="card"><h2>Как музыка влияет на результат</h2><p>Темп задаёт ритм смены кадров и скорость вращения форм. Энергия повышает возбуждение, а значит зерно и контраст. Мажор или минор сдвигает приятность: холодные, тихие дни уходят в минимализм, тёплые и медленные в Моне. Для загруженного файла энергия считается по громкости сигнала.</p></div>
  <div class="card"><h2>Использованные инструменты и честные ограничения</h2><p>React 18, htm, Canvas API, Web Audio API, Web Speech API, SVG-фильтры, Google Fonts. Разбор текста сделан по словарю основ слов, без внешних моделей. Песни по ссылке играют во встроенном плеере сервиса (YouTube, Spotify, Яндекс Музыка, SoundCloud), сами песни не хранятся. Аккаунты и дни хранятся в Supabase (без ключей: только в этом браузере). Озвучка использует голоса браузера, лучшие из них Natural или Online. Предположения об эмоциях не являются диагнозом.</p></div></div>`}
 
 function App(){
- const[user,setUser]=useState(undefined),[tab,setTab]=useState('diary'),[days,setDays]=useState([]),[open,setOpen]=useState(null),[note,setNote]=useState('');
+ const[user,setUser]=useState(undefined),[tab,setTab]=useState('map'),[days,setDays]=useState([]),[cats,setCats]=useState([]),[open,setOpen]=useState(null),[note,setNote]=useState('');
  useEffect(()=>{auth.session().then(setUser,()=>setUser(null))},[]);
- useEffect(()=>{if(!user){setDays([]);return}store.list(user.id).then(a=>{setDays(a);setTab(a.length?'diary':'new')}).catch(e=>setNote('Не удалось загрузить дни: '+e.message))},[user]);
+ useEffect(()=>{if(!user){setDays([]);setCats([]);return}store.list(user.id).then(rows=>{const m=rows.find(r=>r.id==='meta:cats'),a=rows.filter(r=>!String(r.id).startsWith('meta:'));setDays(a);if(m&&m.cats)setCats(m.cats);else{setCats(DEFCATS);store.save(user.id,{id:'meta:cats',cats:DEFCATS}).catch(()=>{})}setTab(a.length?'map':'new')}).catch(e=>setNote('Не удалось загрузить дни: '+e.message))},[user]);
  const fail=e=>setNote('Не удалось сохранить: '+(e.message||'ошибка')+'. Если фото слишком много, удалите ненужные дни.');
  const save=d=>{setNote('');setDays(x=>x.some(y=>y.id===d.id)?x.map(y=>y.id===d.id?d:y):[...x,d]);store.save(user.id,d).catch(fail)};
+ const saveMany=a=>a.forEach(save);
+ const saveCats=c=>{setCats(c);store.save(user.id,{id:'meta:cats',cats:c}).catch(fail)};
  const del=id=>{setDays(x=>x.filter(y=>y.id!==id));setOpen(null);store.remove(user.id,id).catch(fail)};
  const demo=async()=>{(await seed()).forEach(save)};
+ const sort=()=>saveMany(days.map(({cat,pos,...r})=>r));
  if(user===undefined)return html`<main><p class="muted">Загрузка…</p></main>`;
  if(!user)return html`<div><header><h1>Лента дней</h1></header><main><${Auth} onUser=${setUser}/></main></div>`;
  const cur=days.find(d=>d.id===open),go=t=>{setTab(t);setOpen(null)};
- return html`<div><header><h1>Лента дней</h1><nav>${[['new','Записать день'],['diary','Дневник'],['sys','Как это устроено']].map(([k,l])=>html`<button key=${k} class=${tab===k&&!cur?'on':''} onClick=${()=>go(k)}>${l}</button>`)}<button onClick=${async()=>{await auth.signOut();setUser(null)}} title=${user.email}>Выйти</button></nav></header>
+ return html`<div><header><h1>Лента дней</h1><nav>${[['map','Карта'],['new','Записать день'],['sys','Как это устроено']].map(([k,l])=>html`<button key=${k} class=${tab===k&&!cur?'on':''} onClick=${()=>go(k)}>${l}</button>`)}<button onClick=${async()=>{await auth.signOut();setUser(null)}} title=${user.email}>Выйти</button></nav></header>
  <main>${note&&html`<p class="err" role="alert">${note}</p>`}${cur?html`<${Folder} d=${cur} onBack=${()=>setOpen(null)} onSave=${save} onDelete=${del}/>`
-  :tab==='new'?html`<${NewDay} onSave=${d=>{save(d);setTab('diary');setOpen(d.id)}}/>`
-  :tab==='diary'?html`<${Diary} days=${days} onOpen=${setOpen} onSeed=${demo}/>`:html`<${System}/>`}</main></div>`}
+  :tab==='new'?html`<${NewDay} onSave=${d=>{save(d);setTab('map');setOpen(d.id)}}/>`
+  :tab==='map'?html`<${MemoryMap} days=${days} cats=${cats} onOpen=${setOpen} onMove=${saveMany} onCats=${saveCats} onSort=${sort} onSeed=${demo}/>`:html`<${System}/>`}</main></div>`}
 ReactDOM.createRoot(document.getElementById('root')).render(html`<${App}/>`);
 </script></body></html>
