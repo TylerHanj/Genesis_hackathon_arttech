@@ -1,0 +1,78 @@
+/* =====================================================================
+   Дизайн-система «Лента дней».
+   Пять цветов палитры заданы один раз. Все остальные цвета выводятся из них через color-mix
+   (в компонентах нет ни одного hex-кода). Контраст проверен по WCAG AA — см. REPORT.md, 1.9.
+   ===================================================================== */
+:root {
+  --c-bg:      #FAF3E0; /* ANTIQUE — основной светлый фон */
+  --c-surface: #D7CBB5; /* NATURAL COTTON — подложки, карточки */
+  --c-neutral: #A6A89A; /* DUSKY GREEN — второстепенные элементы, бордеры, иконки */
+  --c-warm:    #C79A90; /* BLUSH CLAY — мягкие акценты, hover, теги, выделения */
+  --c-accent:  #3E2318; /* LEATHER — текст, главные кнопки, контрастные элементы */
+
+  /* Единственный цвет вне палитры: сигнал ошибки/удаления (на палитре красного нет). */
+  --c-danger-light: #8E2F23; /* 7.4:1 на --c-bg */
+  --c-danger-dark:  #E9A090; /* 7.7:1 на тёмном фоне */
+
+  --font-display: 'Playfair', Georgia, 'Times New Roman', serif;
+  --font-text: 'Commissioner', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-hand: 'Caveat', 'Segoe Print', cursive;
+
+  --radius-s: 8px;
+  --radius-m: 12px;
+  --radius-l: 18px;
+  --ease: cubic-bezier(.2, .7, .3, 1);
+  --t-fast: 150ms;
+  --t-mid: 220ms;
+}
+
+/* ---------- Светлая тема ---------- */
+:root,
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg:            var(--c-bg);
+  --surface:       var(--c-surface);
+  --surface-soft:  color-mix(in srgb, var(--c-surface) 40%, var(--c-bg));
+  --field:         var(--c-bg);
+  --text:          var(--c-accent);
+  --text-muted:    color-mix(in srgb, var(--c-accent) 80%, var(--c-bg));   /* 7.1:1 на фоне, 4.9:1 на карточке */
+  --border:        color-mix(in srgb, var(--c-neutral) 70%, var(--c-bg));  /* декоративные линии */
+  --border-strong: color-mix(in srgb, var(--c-accent) 60%, var(--c-surface)); /* рамки полей, ≥3:1 */
+  --primary:       var(--c-accent);
+  --on-primary:    var(--c-bg);
+  --primary-hover: color-mix(in srgb, var(--c-accent) 85%, var(--c-warm));
+  --tag:           var(--c-warm);
+  --on-tag:        var(--c-accent);
+  --tag-soft:      color-mix(in srgb, var(--c-warm) 35%, transparent);
+  --focus:         var(--c-accent);
+  --danger:        var(--c-danger-light);
+  --shadow:        0 1px 2px color-mix(in srgb, var(--c-accent) 10%, transparent),
+                   0 10px 28px color-mix(in srgb, var(--c-accent) 10%, transparent);
+  --shadow-lift:   0 14px 36px color-mix(in srgb, var(--c-accent) 22%, transparent);
+  --dot:           color-mix(in srgb, var(--c-neutral) 55%, transparent);
+}
+
+/* ---------- Тёмная тема: та же палитра, «кожа» становится фоном ---------- */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg:            color-mix(in srgb, var(--c-accent) 78%, black);
+  --surface:       var(--c-accent);
+  --surface-soft:  color-mix(in srgb, var(--c-accent) 88%, black);
+  --field:         color-mix(in srgb, var(--c-accent) 70%, black);
+  --text:          var(--c-bg);                                            /* 13:1 и выше */
+  --text-muted:    color-mix(in srgb, var(--c-bg) 72%, var(--c-accent));   /* 7.5:1 */
+  --border:        color-mix(in srgb, var(--c-neutral) 30%, var(--c-accent));
+  --border-strong: color-mix(in srgb, var(--c-neutral) 65%, var(--c-accent)); /* ≥3:1 */
+  --primary:       var(--c-warm);
+  --on-primary:    var(--c-accent);                                        /* 5.8:1 */
+  --primary-hover: color-mix(in srgb, var(--c-warm) 85%, var(--c-bg));
+  --tag:           var(--c-warm);
+  --on-tag:        var(--c-accent);
+  --tag-soft:      color-mix(in srgb, var(--c-warm) 22%, transparent);
+  --focus:         var(--c-warm);
+  --danger:        var(--c-danger-dark);
+  --shadow:        0 1px 2px color-mix(in srgb, black 30%, transparent),
+                   0 10px 28px color-mix(in srgb, black 30%, transparent);
+  --shadow-lift:   0 14px 36px color-mix(in srgb, black 45%, transparent);
+  --dot:           color-mix(in srgb, var(--c-neutral) 30%, transparent);
+}
