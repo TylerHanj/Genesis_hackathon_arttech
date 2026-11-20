@@ -10,6 +10,8 @@ import { Folder } from './Folder.js';
 import { MemoryMap, defaultCats, resetMapView } from './MemoryMap.js';
 import { SidePanel } from './SidePanel.js';
 import { About } from './About.js';
+import { CategoryView } from './CategoryView.js';
+import { looseSpot } from '../core/layout.js';
 import { Menu } from './Menu.js';
 
 function useTheme() {
@@ -47,6 +49,7 @@ export function App() {
 
   const [user, setUser] = useState(undefined);
   const [tab, setTab] = useState('map'), [open, setOpen] = useState(null), [note, setNote] = useState('');
+  const [catView, setCatView] = useState(null);   // открытая категория («внутри пузыря»)
   const [days, setDays] = useState([]), [meta, setMeta] = useState({ cats: [], layout: {} }), [loaded, setLoaded] = useState(false);
   const metaRef = useRef(meta); metaRef.current = meta;
 
@@ -91,9 +94,24 @@ export function App() {
     days.forEach(d => { if (d.pos || d.cat !== undefined) layout[d.id] = { auto: true }; });  // старые ручные места тоже сбрасываются
     saveMeta({ layout });
   };
-  const logout = async () => { await auth.signOut(); resetMapView(); setOpen(null); setUser(null); };
+  const logout = async () => { await auth.signOut(); resetMapView(); setOpen(null); setCatView(null); clearUrl(); setUser(null); };
 
-  const go = k => { setTab(k); setOpen(null); };
+  /* Категория в адресе (?cat=…): кнопка «Назад» браузера работает, параметр принимается только из списка своих категорий. */
+  const catFromUrl = () => { const id = new URLSearchParams(location.search).get('cat'); return id && metaRef.current.cats.some(c => c.id === id) ? id : null; };
+  const clearUrl = () => { if (location.search) history.replaceState(null, '', location.pathname); };
+  useEffect(() => {
+    const onPop = () => { setCatView(catFromUrl()); setOpen(null); };
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
+  useEffect(() => { if (loaded) { const id = catFromUrl(); if (id) { setTab('map'); setCatView(id); } else clearUrl(); } }, [loaded]);
+  const enterCat = id => { if (!metaRef.current.cats.some(c => c.id === id)) return; setCatView(id); setOpen(null); history.pushState({ cat: id }, '', '?cat=' + encodeURIComponent(id)); };
+  const leaveCat = () => { if (history.state && history.state.cat) history.back(); else { setCatView(null); clearUrl(); } };
+  const moveDay = (id, to) => {
+    const c = metaRef.current.cats.find(x => x.id === to);
+    saveMeta({ layout: { ...metaRef.current.layout, [id]: c ? { x: c.x, y: c.y, cat: c.id } : { ...looseSpot(id), cat: null } } });
+  };
+  const go = k => { setTab(k); setOpen(null); setCatView(null); clearUrl(); };
   const cur = days.find(d => d.id === open);
   const NAV = [['map', 'nav.map'], ['new', 'nav.new'], ['about', 'nav.about']];
   const navItems = NAV.map(([k, l]) => ({ key: k, label: t(l), on: tab === k && !cur, go: () => go(k) }));
@@ -115,7 +133,8 @@ export function App() {
     if (!loaded) content = html`<div class="skeleton" aria-busy="true" aria-label=${t('loading')}></div>`;
     else if (cur) content = html`<${Folder} key=${cur.id} d=${cur} onBack=${() => setOpen(null)} onSave=${saveDay} onDelete=${del}/>`;
     else if (tab === 'new') content = html`<${DayForm} onSave=${d => { saveDay(d); setTab('map'); setOpen(d.id); }}/>`;
-    else if (tab === 'map') content = html`<${MemoryMap} days=${days} cats=${meta.cats} layout=${meta.layout} onOpen=${setOpen} onMeta=${saveMeta} onSort=${sort} onSeed=${demo}/>`;
+    else if (tab === 'map' && catView) content = html`<${CategoryView} catId=${catView} days=${days} cats=${meta.cats} layout=${meta.layout} onBack=${leaveCat} onOpen=${setOpen} onMove=${moveDay}/>`;
+    else if (tab === 'map') content = html`<${MemoryMap} days=${days} cats=${meta.cats} layout=${meta.layout} onOpen=${setOpen} onMeta=${saveMeta} onSort=${sort} onSeed=${demo} onEnterCat=${enterCat}/>`;
     else content = html`<${About}/>`;
     body = html`<div class="shell">
       <aside class="side">
@@ -130,7 +149,7 @@ export function App() {
           ${note && html`<p class="err banner" role="alert">${t(note)}</p>`}
           ${content}
         </main>
-        ${tab === 'map' && !cur && html`<div class="side-mobile"><${SidePanel} days=${days} onOpen=${setOpen} idPrefix="spm"/></div>`}
+        ${tab === 'map' && !cur && !catView && html`<div class="side-mobile"><${SidePanel} days=${days} onOpen=${setOpen} idPrefix="spm"/></div>`}
       </div>
     </div>`;
   }

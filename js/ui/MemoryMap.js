@@ -8,9 +8,10 @@
      перетаскивание больше не отправляет на сервер весь день с фото (Б10).
    ===================================================================== */
 import { html, useState, useEffect, useRef } from '../lib/react.js';
-import { clamp, rng, hash } from '../lib/util.js';
+import { clamp, hash } from '../lib/util.js';
 import { useT, allValues } from '../i18n/index.js';
 import { Scene } from './Scene.js';
+import { catOf as catOfDay, packCircle, looseSpot, byNewest, PREVIEW_MAX } from '../core/layout.js';
 
 const DEF = [['monet', 35], ['kandinsky', 215], ['minimal', 250], ['collage', 8], ['film', 90]];
 export const defaultCats = t => DEF.map(([k, h], i) => ({
@@ -26,7 +27,7 @@ export function catLabel(c, t) {
 let lastView = null;
 export const resetMapView = () => { lastView = null; };
 
-export function MemoryMap({ days, cats, layout, onOpen, onMeta, onSort, onSeed }) {
+export function MemoryMap({ days, cats, layout, onOpen, onMeta, onSort, onSeed, onEnterCat }) {
   const t = useT();
   const box = useRef(null);
   const [v, setV] = useState(lastView || { x: 400, y: 300, k: .7 });
@@ -39,7 +40,7 @@ export function MemoryMap({ days, cats, layout, onOpen, onMeta, onSort, onSeed }
     const r = box.current.getBoundingClientRect();
     const pts = [];
     cats.forEach(c => { pts.push([c.x - c.r, c.y - c.r - 56], [c.x + c.r, c.y + c.r + 12]); });
-    days.forEach(d => { const p = base(d, cats); pts.push([p.x - 50, p.y - 80], [p.x + 50, p.y + 100]); });
+    days.forEach(d => { const p = base(d); if (p) pts.push([p.x - 50, p.y - 80], [p.x + 50, p.y + 100]); });
     if (!pts.length) return { x: r.width / 2, y: r.height / 2, k: .7 };
     const xs = pts.map(q => q[0]), ys = pts.map(q => q[1]);
     const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
@@ -60,40 +61,39 @@ export function MemoryMap({ days, cats, layout, onOpen, onMeta, onSort, onSeed }
     return () => el.removeEventListener('wheel', h);
   }, []);
 
-  /* ---- где лежит карточка ---- */
-  const entry = d => layout[d.id];
-  const catOf = d => {
-    const e = entry(d);
-    if (e && !e.auto) return e.cat;
-    if (!e && d.cat !== undefined) return d.cat;                        // старые записи
-    return cats.some(c => c.id === 'c-' + d.style.tech) ? 'c-' + d.style.tech : null;
-  };
-  const fixedPos = d => { const e = entry(d); if (e && !e.auto) return { x: e.x, y: e.y }; if (!e && d.pos) return d.pos; return null; };
-  const base = (d, list) => {
-    const p = fixedPos(d); if (p) return p;
-    const c = list.find(x => x.id === catOf(d)), r = rng(hash(d.id));
-    if (c) { const a = r() * 6.283, m = Math.sqrt(r()) * c.r * .6; return { x: c.x + Math.cos(a) * m, y: c.y + Math.sin(a) * m }; }
-    return { x: -330 + r() * 660, y: 700 + r() * 100 };
-  };
+  /* ---- где лежит карточка ----
+     В круге: до 6 новых карточек аккуратной сеткой (packCircle), остальные — «+N» и экран категории.
+     Без категории: там, куда положил пользователь (или в свободной зоне под кругами). */
+  const catOf = d => catOfDay(d, cats, layout);
+  const loosePos = d => { const e = layout[d.id]; if (e && !e.auto && e.cat == null) return { x: e.x, y: e.y }; if (!e && d.pos && d.cat == null) return d.pos; return looseSpot(d.id); };
   const dx = drag ? drag.dx : 0, dy = drag ? drag.dy : 0;
   const cs = cats.map(c => (drag && drag.type === 'cat' && drag.id === c.id ? { ...c, x: c.x + dx, y: c.y + dy } : c));
+  const plan = (() => {                                                   // id дня → { x, y, s }; круг → { more, hidden }
+    const pos = {}, extra = {};
+    cs.forEach(c => {
+      const inCat = days.filter(d => catOf(d) === c.id).sort(byNewest);
+      const pk = packCircle(c, inCat.length);
+      inCat.slice(0, PREVIEW_MAX).forEach((d, k) => { pos[d.id] = { ...pk.pts[k], s: pk.s }; });
+      extra[c.id] = { more: pk.more, hidden: Math.max(0, inCat.length - PREVIEW_MAX), s: pk.s };
+    });
+    days.forEach(d => { if (!pos[d.id] && !cs.some(c => c.id === catOf(d))) pos[d.id] = { ...loosePos(d), s: 1 }; });
+    return { pos, extra };
+  })();
+  const base = d => plan.pos[d.id] || null;
   const show = d => {
-    const p = base(d, cs);
-    const mv = drag && ((drag.type === 'card' && drag.id === d.id) || (drag.type === 'cat' && fixedPos(d) && catOf(d) === drag.id));
-    return mv ? { x: p.x + dx, y: p.y + dy } : p;
+    const p = base(d); if (!p) return null;
+    return drag && drag.type === 'card' && drag.id === d.id ? { ...p, x: p.x + dx, y: p.y + dy } : p;
   };
 
   const finish = (type, id, ax, ay) => {
     if (type === 'card') {
       const d = days.find(x => x.id === id); if (!d) return;
-      const p = base(d, cats), np = { x: p.x + ax, y: p.y + ay };
+      const p = base(d) || looseSpot(d.id), np = { x: p.x + ax, y: p.y + ay };
       let best = null, bd = 1e9;
       cats.forEach(c => { const m = Math.hypot(np.x - c.x, np.y - c.y); if (m < c.r && m < bd) { best = c; bd = m; } });
       onMeta({ layout: { ...layout, [id]: { x: Math.round(np.x), y: Math.round(np.y), cat: best ? best.id : null } } });
     } else {
-      const nl = { ...layout };
-      days.forEach(d => { const p = fixedPos(d); if (p && catOf(d) === id) nl[d.id] = { x: Math.round(p.x + ax), y: Math.round(p.y + ay), cat: id }; });
-      onMeta({ cats: cats.map(x => (x.id === id ? { ...x, x: Math.round(x.x + ax), y: Math.round(x.y + ay) } : x)), layout: nl });
+      onMeta({ cats: cats.map(x => (x.id === id ? { ...x, x: Math.round(x.x + ax), y: Math.round(x.y + ay) } : x)) });   // карточки едут вместе с кругом
     }
   };
 
@@ -117,9 +117,9 @@ export function MemoryMap({ days, cats, layout, onOpen, onMeta, onSort, onSeed }
   /* панорама одним пальцем/мышью и зум двумя пальцами */
   const ptrs = useRef(new Map()), gest = useRef(null);
   const local = e => { const r = box.current.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
-  const startGesture = () => {
+  const startGesture = target => {
     const pts = [...ptrs.current.values()], o = vRef.current;
-    if (pts.length === 1) gest.current = { type: 'pan', s: pts[0], o };
+    if (pts.length === 1) gest.current = { type: 'pan', s: pts[0], o, moved: false, target: target || null };
     else if (pts.length >= 2) {
       const [a, b] = pts, mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
       gest.current = { type: 'pinch', d0: Math.hypot(a.x - b.x, a.y - b.y) || 1, wx: (mid.x - o.x) / o.k, wy: (mid.y - o.y) / o.k, k0: o.k };
@@ -130,21 +130,32 @@ export function MemoryMap({ days, cats, layout, onOpen, onMeta, onSort, onSeed }
     if (e.button !== undefined && e.button !== 0) return;
     e.preventDefault();                                                  // не начинать выделение текста
     try { box.current.setPointerCapture(e.pointerId); } catch (x) {}
-    ptrs.current.set(e.pointerId, local(e)); startGesture();
+    const first = ptrs.current.size === 0;
+    ptrs.current.set(e.pointerId, local(e)); startGesture(first ? e.target : null);
   };
   const onMove = e => {
     if (!ptrs.current.has(e.pointerId)) return;
     ptrs.current.set(e.pointerId, local(e));
     const g = gest.current; if (!g) return;
     const pts = [...ptrs.current.values()];
-    if (g.type === 'pan') setV({ ...g.o, x: g.o.x + pts[0].x - g.s.x, y: g.o.y + pts[0].y - g.s.y });
-    else if (pts.length >= 2) {
+    if (g.type === 'pan') {
+      if (Math.abs(pts[0].x - g.s.x) + Math.abs(pts[0].y - g.s.y) > 5) g.moved = true;
+      setV({ ...g.o, x: g.o.x + pts[0].x - g.s.x, y: g.o.y + pts[0].y - g.s.y });
+    } else if (pts.length >= 2) {
       const [a, b] = pts, mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
       const k = clamp(g.k0 * Math.hypot(a.x - b.x, a.y - b.y) / g.d0, .25, 2.2);
       setV({ k, x: mid.x - g.wx * k, y: mid.y - g.wy * k });
     }
   };
-  const onUp = e => { if (!ptrs.current.delete(e.pointerId)) return; startGesture(); };
+  const onUp = e => {
+    if (!ptrs.current.delete(e.pointerId)) return;
+    const g = gest.current;
+    if (g && g.type === 'pan' && !g.moved && !ptrs.current.size && e.type === 'pointerup' && g.target && g.target.closest) {
+      const circ = g.target.closest('.circ');                            // клик по пустому месту круга → войти в категорию
+      if (circ && !g.target.closest('.mc,.clab,.more')) { gest.current = null; onEnterCat(circ.dataset.id); return; }
+    }
+    startGesture(null);
+  };
 
   const addCat = () => {
     const n = name.trim().slice(0, 60); if (!n) return;
@@ -155,7 +166,7 @@ export function MemoryMap({ days, cats, layout, onOpen, onMeta, onSort, onSeed }
   const delCat = c => {
     if (!window.confirm(t('map.delCatConfirm', { name: catLabel(c, t) }))) return;
     const nl = { ...layout };
-    days.filter(d => catOf(d) === c.id).forEach(d => { const p = base(d, cats); nl[d.id] = { x: Math.round(p.x), y: Math.round(p.y), cat: null }; });
+    days.filter(d => catOf(d) === c.id).forEach(d => { const p = base(d) || { x: c.x, y: c.y }; nl[d.id] = { x: Math.round(p.x), y: Math.round(p.y), cat: null }; });
     onMeta({ cats: cats.filter(x => x.id !== c.id), layout: nl });
   };
   const rename = () => { if (ed && ed.value.trim()) onMeta({ cats: cats.map(c => (c.id === ed.id ? { ...c, name: ed.value.trim().slice(0, 60) } : c)) }); setEd(null); };
@@ -166,18 +177,23 @@ export function MemoryMap({ days, cats, layout, onOpen, onMeta, onSort, onSeed }
       onPointerDown=${onDown} onPointerMove=${onMove} onPointerUp=${onUp} onPointerCancel=${onUp}
       style=${{ backgroundPosition: `${v.x}px ${v.y}px`, backgroundSize: `${28 * v.k}px ${28 * v.k}px` }}>
     <div class="world" style=${{ transform: `translate(${v.x}px,${v.y}px) scale(${v.k})` }}>
-      ${cs.map(c => html`<div key=${c.id} class="circ" style=${{ left: c.x - c.r, top: c.y - c.r, width: c.r * 2, height: c.r * 2, '--cc': c.color }}>
+      ${cs.map(c => { const ex = plan.extra[c.id]; return html`<div key=${c.id} class="circ" data-id=${c.id} title=${t('map.circTitle')} style=${{ left: c.x - c.r, top: c.y - c.r, width: c.r * 2, height: c.r * 2, '--cc': c.color }}>
         <div class="clab" onPointerDown=${e => begin(e, 'cat', c.id)} onDoubleClick=${() => setEd({ id: c.id, value: catLabel(c, t) })} title=${t('map.catTitle')}>
           ${ed && ed.id === c.id
             ? html`<input autoFocus=${true} maxLength="60" aria-label=${t('map.catName')} value=${ed.value} onPointerDown=${stop} onChange=${e => setEd({ ...ed, value: e.target.value })} onBlur=${rename} onKeyDown=${e => { if (e.key === 'Enter') rename(); if (e.key === 'Escape') setEd(null); }}/>`
             : html`<span>${catLabel(c, t)}</span>`}
           <small>${days.filter(d => catOf(d) === c.id).length}</small>
-          <button aria-label=${t('map.delCat')} title=${t('map.delCat')} onPointerDown=${stop} onClick=${() => delCat(c)}>×</button>
+          <button class="clab-btn" aria-label=${t('map.rename')} title=${t('map.rename')} onPointerDown=${stop} onClick=${() => setEd({ id: c.id, value: catLabel(c, t) })}>✎</button>
+          <button class="clab-btn open" aria-label=${t('map.openCat', { name: catLabel(c, t) })} title=${t('map.openCat', { name: catLabel(c, t) })} onPointerDown=${stop} onClick=${() => onEnterCat(c.id)}>↗</button>
+          <button class="clab-btn" aria-label=${t('map.delCat')} title=${t('map.delCat')} onPointerDown=${stop} onClick=${() => delCat(c)}>×</button>
         </div>
-      </div>`)}
+        ${ex && ex.more && html`<button class="more" style=${{ left: ex.more.x - (c.x - c.r), top: ex.more.y - (c.y - c.r), '--s': ex.s }}
+            aria-label=${t('map.moreAria', { n: ex.hidden, name: catLabel(c, t) })} onPointerDown=${stop} onClick=${() => onEnterCat(c.id)}>+${ex.hidden}</button>`}
+      </div>`; })}
       ${days.map(d => {
-        const p = show(d), on = drag && drag.type === 'card' && drag.id === d.id;
-        return html`<div key=${d.id} class=${'mc' + (on ? ' dr' : '')} style=${{ left: p.x - 42, top: p.y - 75 }}
+        const p = show(d); if (!p) return null;
+        const on = drag && drag.type === 'card' && drag.id === d.id;
+        return html`<div key=${d.id} class=${'mc' + (on ? ' dr' : '')} style=${{ left: p.x - 42, top: p.y - 75, '--s': p.s }}
             role="button" tabIndex="0" aria-label=${t('map.open', { title: d.title })}
             onPointerDown=${e => begin(e, 'card', d.id)} onKeyDown=${e => cardKey(e, d.id)}>
           <${Scene} d=${d} live=${false}/><span>${d.title}</span></div>`;
