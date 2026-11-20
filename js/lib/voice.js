@@ -1,13 +1,7 @@
 /* Озвучка через Web Speech API. Язык голоса определяется по тексту записи. */
 import { useState, useEffect } from './react.js';
-import { clamp } from './util.js';
-
-export function textLang(text) {
-  const s = String(text || '');
-  if (/[ӘәҒғҚқҢңӨөҰұҮүҺһ]/.test(s)) return 'kk';
-  const cyr = (s.match(/[А-Яа-яЁё]/g) || []).length, lat = (s.match(/[A-Za-z]/g) || []).length;
-  return lat > cyr ? 'en' : 'ru';
-}
+import { clamp, textLang } from './util.js';
+export { textLang };
 const SPEECH = { kk: 'kk', ru: 'ru', en: 'en' };
 
 export function useVoices(lang) {

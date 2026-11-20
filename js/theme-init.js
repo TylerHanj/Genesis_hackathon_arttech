@@ -6,6 +6,9 @@
     pref = window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   }
   document.documentElement.setAttribute('data-theme', pref);
+  var pal = 'warm';
+  try { pal = JSON.parse(localStorage.getItem('dd-palette')) || 'warm'; } catch (e) {}
+  document.documentElement.setAttribute('data-palette', pal === 'olive' ? 'olive' : 'warm');
   var lang = 'ru';
   try { lang = JSON.parse(localStorage.getItem('dd-lang')) || ''; } catch (e) {}
   if (['kk', 'ru', 'en'].indexOf(lang) < 0) {

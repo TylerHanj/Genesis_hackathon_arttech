@@ -31,3 +31,11 @@ export const ls = {
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* квота или приватный режим */ } },
   del(k) { try { localStorage.removeItem(k); } catch (e) {} },
 };
+
+/* Язык текста записи: казахский — по особым буквам, английский — если латиницы больше кириллицы. */
+export function textLang(text) {
+  const s = String(text || '');
+  if (/[ӘәҒғҚқҢңӨөҰұҮүҺһІі]/.test(s)) return 'kk';
+  const cyr = (s.match(/[А-Яа-яЁё]/g) || []).length, lat = (s.match(/[A-Za-z]/g) || []).length;
+  return lat > cyr ? 'en' : 'ru';
+}

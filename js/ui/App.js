@@ -25,6 +25,13 @@ function useTheme() {
   return [pref, setPref];
 }
 
+/* Палитра: «Тёплая» (warm) или «Олива» (olive); работает вместе со светлой/тёмной темой. */
+function usePalette() {
+  const [pal, setPal] = useState(() => (ls.get('dd-palette', 'warm') === 'olive' ? 'olive' : 'warm'));
+  useEffect(() => { document.documentElement.setAttribute('data-palette', pal); ls.set('dd-palette', pal); }, [pal]);
+  return [pal, setPal];
+}
+
 function Brand({ t, as = 'h1' }) {
   const H = as;
   return html`<div class="brand"><${H} class="brand-name">${t('app.title')}</${H}><span class="brand-tag">${t('app.tagline')}</span></div>`;
@@ -36,6 +43,7 @@ export function App() {
   const setLang = l => { if (isLang(l)) { setLangState(l); ls.set('dd-lang', l); } };
   useEffect(() => { document.documentElement.lang = lang; document.title = `${t('app.title')} — ${t('app.tagline')}`; }, [lang]);
   const [theme, setTheme] = useTheme();
+  const [palette, setPalette] = usePalette();
 
   const [user, setUser] = useState(undefined);
   const [tab, setTab] = useState('map'), [open, setOpen] = useState(null), [note, setNote] = useState('');
@@ -89,7 +97,7 @@ export function App() {
   const cur = days.find(d => d.id === open);
   const NAV = [['map', 'nav.map'], ['new', 'nav.new'], ['about', 'nav.about']];
   const navItems = NAV.map(([k, l]) => ({ key: k, label: t(l), on: tab === k && !cur, go: () => go(k) }));
-  const menu = html`<${Menu} lang=${lang} setLang=${setLang} theme=${theme} setTheme=${setTheme} user=${user} onLogout=${logout} nav=${user ? navItems : null}/>`;
+  const menu = html`<${Menu} lang=${lang} setLang=${setLang} theme=${theme} setTheme=${setTheme} palette=${palette} setPalette=${setPalette} user=${user} onLogout=${logout} nav=${user ? navItems : null}/>`;
 
   let body;
   if (!sb) {

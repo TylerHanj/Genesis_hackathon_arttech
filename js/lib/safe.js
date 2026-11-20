@@ -33,7 +33,7 @@ export function sanitizeDay(raw) {
     badLink: !!(link && !parseTrackLink(link)),
     artist: str(sg.artist, 120), genre: str(sg.genre, 40), year: str(sg.year, 12),
     bpm: num(sg.bpm, 40, 220, 118), mode: sg.mode === 'minor' ? 'minor' : 'major', energy: num(sg.energy, 0, 1, .6),
-    fileName: str(sg.fileName, 120),
+    fileName: str(sg.fileName, 120), start: Math.round(num(sg.start, 0, 36000, 0)),
   };
   const v = st.voice && typeof st.voice === 'object' ? st.voice : {};
   const style = {
@@ -47,6 +47,8 @@ export function sanitizeDay(raw) {
     id, date: DATE.test(raw.date) ? raw.date : '', text: str(raw.text, 20000), title: str(raw.title, 140) || '…',
     manualTitle: raw.manualTitle === true, photos, song, style,
   };
+  const md = raw.mood;
+  if (md && typeof md === 'object' && isFinite(md.valence) && isFinite(md.energy)) day.mood = { valence: num(md.valence, -1, 1, 0), energy: num(md.energy, -1, 1, 0) };
   // устаревшее место на карте (теперь раскладка хранится отдельно, см. store.layout)
   if (typeof raw.cat === 'string' || raw.cat === null) day.cat = raw.cat === null ? null : str(raw.cat, 100);
   if (raw.pos && isFinite(raw.pos.x) && isFinite(raw.pos.y)) day.pos = { x: num(raw.pos.x, -1e5, 1e5, 0), y: num(raw.pos.y, -1e5, 1e5, 0) };

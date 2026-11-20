@@ -2,11 +2,12 @@
 import { html, useState, useEffect } from '../lib/react.js';
 import { ls } from '../lib/util.js';
 import { useVoices, vScore, speak, stopSpeak, textLang } from '../lib/voice.js';
-import { explain, voiceKeyOf } from '../core/analysis.js';
+import { explain, voiceKeyOf, moodSector, isMood } from '../core/analysis.js';
 import { useT } from '../i18n/index.js';
 import { Scene } from './Scene.js';
 import { Player } from './Player.js';
 import { DayForm } from './DayForm.js';
+import { MoodFace } from './MoodFace.js';
 
 export function Folder({ d, onBack, onSave, onDelete }) {
   const t = useT();
@@ -22,7 +23,7 @@ export function Folder({ d, onBack, onSave, onDelete }) {
     <div class="split">
       <div><${Scene} d=${d}/><div class="player-wrap"><${Player} s=${s}/></div></div>
       <div>
-        <p class="meta">${t.date(d.date)}${mus ? '  ·  ♪ ' + mus : ''}</p>
+        <p class="meta">${t.date(d.date)}${mus ? '  ·  ♪ ' + mus : ''}${isMood(d.mood) ? html`<span class="mood-chip"><${MoodFace} v=${d.mood.valence} e=${d.mood.energy}/>${t('sector.' + moodSector(d.mood.valence, d.mood.energy))}</span>` : ''}</p>
         <h2 class="folder-title">${d.title}</h2>
         <blockquote class="story">${d.text}</blockquote>
         <div class="bar">

@@ -2,7 +2,7 @@
 import { html, useState, useEffect, useRef } from '../lib/react.js';
 import { LANGS, useT } from '../i18n/index.js';
 
-export function Menu({ lang, setLang, theme, setTheme, user, onLogout, nav }) {
+export function Menu({ lang, setLang, theme, setTheme, palette, setPalette, user, onLogout, nav }) {
   const t = useT();
   const [open, setOpen] = useState(false);
   const root = useRef(null), btn = useRef(null);
@@ -22,6 +22,9 @@ export function Menu({ lang, setLang, theme, setTheme, user, onLogout, nav }) {
       ${nav && html`<nav class="menu-nav" aria-label=${t('nav.main')}>${nav.map(n => html`<button key=${n.key} class=${n.on ? 'on' : ''} aria-current=${n.on ? 'page' : undefined} onClick=${() => { n.go(); setOpen(false); }}>${n.label}</button>`)}</nav>`}
       <div class="menu-sec"><span class="menu-h" id="m-lang">${t('menu.language')}</span>
         <div class="seg" role="group" aria-labelledby="m-lang">${LANGS.map(l => html`<button key=${l.code} lang=${l.code} aria-pressed=${lang === l.code} title=${l.label} onClick=${pick(() => setLang(l.code))}>${l.short}</button>`)}</div></div>
+      <div class="menu-sec"><span class="menu-h" id="m-pal">${t('menu.palette')}</span>
+        <div class="seg" role="group" aria-labelledby="m-pal">${['warm', 'olive'].map(k => html`<button key=${k} aria-pressed=${palette === k} onClick=${() => setPalette(k)}>
+          <span class=${'sw sw-' + k} aria-hidden="true"><i></i><i></i><i></i></span>${t('palette.' + k)}</button>`)}</div></div>
       <div class="menu-sec"><span class="menu-h" id="m-theme">${t('menu.theme')}</span>
         <div class="seg" role="group" aria-labelledby="m-theme">${['light', 'dark', 'auto'].map(k => html`<button key=${k} aria-pressed=${theme === k} onClick=${pick(() => setTheme(k))}>${t('theme.' + k)}</button>`)}</div></div>
       ${user && html`<div class="menu-sec"><span class="menu-h">${t('menu.account')}</span><span class="menu-mail">${user.email}</span>
