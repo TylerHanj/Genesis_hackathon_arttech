@@ -35,7 +35,7 @@
       "headers": [
         {
           "key": "Content-Security-Policy",
-          "value": "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob: https://kzzndodwngahyzguxxjc.supabase.co; font-src 'self'; connect-src 'self' https://kzzndodwngahyzguxxjc.supabase.co wss://kzzndodwngahyzguxxjc.supabase.co; media-src 'self' blob: https:; frame-src https://www.youtube-nocookie.com https://open.spotify.com https://music.yandex.ru https://w.soundcloud.com https://embed.music.apple.com; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'; manifest-src 'self'; upgrade-insecure-requests"
+          "value": "default-src 'self'; script-src 'self' https://open.spotify.com; style-src 'self'; img-src 'self' data: blob: https://kzzndodwngahyzguxxjc.supabase.co; font-src 'self'; connect-src 'self' https://kzzndodwngahyzguxxjc.supabase.co wss://kzzndodwngahyzguxxjc.supabase.co; media-src 'self' blob: https:; frame-src https://www.youtube-nocookie.com https://open.spotify.com https://music.yandex.ru https://w.soundcloud.com https://embed.music.apple.com; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'; manifest-src 'self'; upgrade-insecure-requests"
         },
         {
           "key": "X-Frame-Options",

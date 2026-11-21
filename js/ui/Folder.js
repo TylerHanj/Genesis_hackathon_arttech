@@ -1,5 +1,6 @@
 /* Папка дня: кадр, песня, текст, озвучка, объяснение. */
 import { html, useState, useEffect } from '../lib/react.js';
+import { dominantColors, toBackground } from '../lib/palette.js';
 import { ls } from '../lib/util.js';
 import { useVoices, vScore, speak, stopSpeak, textLang } from '../lib/voice.js';
 import { explain, voiceKeyOf, moodSector, isMood } from '../core/analysis.js';
@@ -15,10 +16,17 @@ export function Folder({ d, onBack, onSave, onDelete }) {
   const [edit, setEdit] = useState(false), [ask, setAsk] = useState(false), [more, setMore] = useState(false);
   const voices = useVoices(textLang(d.text)), [vn, setVn] = useState(ls.get('dd-voice', ''));
   useEffect(() => stopSpeak, []);
+  /* Градиент фона по преобладающим цветам фото; пока считается (или не вышло) — цвета палитры дня. */
+  const [bg, setBg] = useState(null);
+  useEffect(() => {
+    let alive = true;
+    dominantColors(d.photos.map(p => p.url)).then(c => { if (alive) setBg(toBackground(c, st.dark)); }, () => {});
+    return () => { alive = false; };
+  }, [d.id, d.photos.length]);
   const sorted = [...voices].sort((a, b) => vScore(b) - vScore(a)), voice = sorted.find(v => v.name === vn) || sorted[0];
   if (edit) return html`<${DayForm} init=${d} onSave=${x => { onSave(x); setEdit(false); }} onCancel=${() => setEdit(false)}/>`;
   const mus = [s.artist, s.year].filter(Boolean).join(', ');
-  const pal = { '--s1': st.s1, '--s2': st.s2, '--sa': st.sa, '--si': st.si };
+  const pal = { '--s1': st.s1, '--s2': st.s2, '--sa': st.sa, '--si': st.si, ...(bg ? { '--g1': bg[0], '--g2': bg[1], '--g3': bg[2] } : {}) };
   return html`<div class="folder" style=${pal}>
     <button class="btn ghost" onClick=${onBack}>← ${t('folder.back')}</button>
     <div class="split">
