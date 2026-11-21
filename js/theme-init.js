@@ -1,19 +1,5 @@
-/* Ставит тему до первой отрисовки, чтобы не было вспышки светлого экрана. Отдельный файл — из-за CSP (без inline-скриптов). */
-(function () {
-  var pref = 'auto';
-  try { pref = JSON.parse(localStorage.getItem('dd-theme')) || 'auto'; } catch (e) {}
-  if (pref !== 'light' && pref !== 'dark') {
-    pref = window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-  }
-  document.documentElement.setAttribute('data-theme', pref);
-  var pal = 'warm';
-  try { pal = JSON.parse(localStorage.getItem('dd-palette')) || 'warm'; } catch (e) {}
-  document.documentElement.setAttribute('data-palette', pal === 'olive' ? 'olive' : 'warm');
-  var lang = 'ru';
-  try { lang = JSON.parse(localStorage.getItem('dd-lang')) || ''; } catch (e) {}
-  if (['kk', 'ru', 'en'].indexOf(lang) < 0) {
-    var nav = (navigator.languages || [navigator.language || 'ru']).map(function (l) { return String(l).slice(0, 2).toLowerCase(); });
-    lang = nav.filter(function (l) { return l === 'kk' || l === 'ru' || l === 'en'; })[0] || 'ru';
-  }
-  document.documentElement.lang = lang;
-})();
+/* React 18 и htm подключены как обычные скрипты из /vendor (без сборщика). */
+const React = window.React;
+export const { useState, useEffect, useMemo, useRef, useCallback, useContext, createContext, Fragment } = React;
+export const html = window.htm.bind(React.createElement);
+export default React;

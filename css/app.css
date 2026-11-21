@@ -411,3 +411,27 @@ tr:last-child td, tr:last-child th { border-bottom: 0; }
   .ph.on, .kg, .grain, .skeleton, .menu-pop { animation: none; }
   *, *::before, *::after { transition-duration: 0s !important; }
 }
+
+/* ---------- фон папки дня по палитре «Почему день выглядит так» ---------- */
+.folder {
+  --bg: var(--s1);
+  --text: var(--si);
+  --text-muted: color-mix(in srgb, var(--si) 78%, var(--s1));
+  --surface: color-mix(in srgb, var(--si) 9%, var(--s1));
+  --surface-soft: color-mix(in srgb, var(--si) 6%, var(--s1));
+  --border: color-mix(in srgb, var(--si) 22%, var(--s1));
+  --border-strong: color-mix(in srgb, var(--si) 55%, var(--s1));
+  --primary: var(--si);
+  --on-primary: var(--s1);
+  --primary-hover: color-mix(in srgb, var(--si) 85%, var(--sa));
+  --tag: color-mix(in srgb, var(--sa) 38%, var(--s1));
+  --on-tag: var(--si);
+  --tag-soft: color-mix(in srgb, var(--sa) 26%, transparent);
+  --focus: var(--si);
+  position: relative; color: var(--text);
+  background: linear-gradient(155deg, var(--s1) 0%, var(--s2) 100%);
+  border-radius: var(--radius-l); padding: 24px;
+}
+.folder .why-card { background: color-mix(in srgb, var(--si) 9%, transparent); box-shadow: none; border: 1px solid var(--border); }
+.folder select { background: var(--surface-soft); color: var(--text); border-color: var(--border-strong); }
+@media (max-width: 820px) { .folder { padding: 16px; } }
