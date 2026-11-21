@@ -67,3 +67,9 @@ export function toBackground(cols, dark) {
   const lv = dark ? [.2, .27, .16] : [.84, .78, .9];
   return list.slice(0, 3).map((c, i) => hsl(c.h, Math.min(dark ? .6 : .7, Math.max(.28, c.s)), lv[i]));
 }
+
+/* Перекрашивает цвет дня «hsl(h s% l%)» под тему сайта: тот же оттенок и насыщенность, другая светлота. */
+export function retone(color, l) {
+  const m = /^hsl\((\d+) (\d+)% (\d+)%\)$/.exec(color);
+  return m ? `hsl(${m[1]} ${m[2]}% ${l}%)` : color;
+}

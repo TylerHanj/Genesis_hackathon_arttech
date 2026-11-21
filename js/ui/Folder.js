@@ -1,6 +1,18 @@
 /* Папка дня: кадр, песня, текст, озвучка, объяснение. */
 import { html, useState, useEffect } from '../lib/react.js';
-import { dominantColors, toBackground } from '../lib/palette.js';
+import { dominantColors, toBackground, retone } from '../lib/palette.js';
+
+/* Тема сайта (светлая/тёмная) из атрибута <html data-theme>; обновляется при переключении. */
+function useThemeDark() {
+  const get = () => document.documentElement.getAttribute('data-theme') === 'dark';
+  const [dark, setDark] = useState(get);
+  useEffect(() => {
+    const mo = new MutationObserver(() => setDark(get()));
+    mo.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+    return () => mo.disconnect();
+  }, []);
+  return dark;
+}
 import { ls } from '../lib/util.js';
 import { useVoices, vScore, speak, stopSpeak, textLang } from '../lib/voice.js';
 import { explain, voiceKeyOf, moodSector, isMood } from '../core/analysis.js';
@@ -17,16 +29,18 @@ export function Folder({ d, onBack, onSave, onDelete }) {
   const voices = useVoices(textLang(d.text)), [vn, setVn] = useState(ls.get('dd-voice', ''));
   useEffect(() => stopSpeak, []);
   /* Градиент фона по преобладающим цветам фото; пока считается (или не вышло) — цвета палитры дня. */
-  const [bg, setBg] = useState(null);
+  const themeDark = useThemeDark(), [bg, setBg] = useState(null);
   useEffect(() => {
     let alive = true;
-    dominantColors(d.photos.map(p => p.url)).then(c => { if (alive) setBg(toBackground(c, st.dark)); }, () => {});
+    dominantColors(d.photos.map(p => p.url)).then(c => { if (alive) setBg(toBackground(c, themeDark)); }, () => {});
     return () => { alive = false; };
-  }, [d.id, d.photos.length]);
+  }, [d.id, d.photos.length, themeDark]);
   const sorted = [...voices].sort((a, b) => vScore(b) - vScore(a)), voice = sorted.find(v => v.name === vn) || sorted[0];
   if (edit) return html`<${DayForm} init=${d} onSave=${x => { onSave(x); setEdit(false); }} onCancel=${() => setEdit(false)}/>`;
   const mus = [s.artist, s.year].filter(Boolean).join(', ');
-  const pal = { '--s1': st.s1, '--s2': st.s2, '--sa': st.sa, '--si': st.si, ...(bg ? { '--g1': bg[0], '--g2': bg[1], '--g3': bg[2] } : {}) };
+  /* Цвета дня подгоняются под тему сайта: тёмная тема — тёмный фон и светлый текст, светлая — наоборот. */
+  const fit = (c, l) => (st.dark === themeDark ? c : retone(c, l));
+  const pal = { '--s1': fit(st.s1, themeDark ? 12 : 90), '--s2': fit(st.s2, themeDark ? 19 : 80), '--sa': fit(st.sa, themeDark ? 62 : 48), '--si': fit(st.si, themeDark ? 92 : 15), ...(bg ? { '--g1': bg[0], '--g2': bg[1], '--g3': bg[2] } : {}) };
   return html`<div class="folder" style=${pal}>
     <button class="btn ghost" onClick=${onBack}>← ${t('folder.back')}</button>
     <div class="split">
