@@ -3,6 +3,8 @@
    SVG/HTML как изображения не принимаются. Фото потом перекодируются через canvas в JPEG —
    это удаляет EXIF (в т.ч. геолокацию) и любые встроенные данные.
    ===================================================================== */
+import { analyzePixels } from '../core/vision.js';
+
 export const LIMITS = Object.freeze({ photos: 4, photoMB: 15, audioMB: 25, maxSide: 900 });
 
 const startsWith = (b, sig, off = 0) => sig.every((x, i) => x === null || b[off + i] === x);
@@ -45,15 +47,7 @@ export async function checkAudio(file) {
   return { ok: true, mime: real };
 }
 
-function rgb2hsl(r, g, b) {
-  r /= 255; g /= 255; b /= 255;
-  const M = Math.max(r, g, b), m = Math.min(r, g, b), l = (M + m) / 2, d = M - m;
-  let h = 0, s = 0;
-  if (d) { s = d / (1 - Math.abs(2 * l - 1)); h = M === r ? ((g - b) / d) % 6 : M === g ? (b - r) / d + 2 : (r - g) / d + 4; h = (h * 60 + 360) % 360; }
-  return { h, s, l };
-}
-
-/* Картинка (File или data:/blob: URL) → JPEG ≤ 900 px + средний цвет. */
+/* Картинка (File или data:/blob: URL) → JPEG ≤ 900 px + главные цвета, свет и примерный сюжет. */
 export function prepImage(src, max = LIMITS.maxSide) {
   return new Promise((ok, no) => {
     const isFile = src instanceof Blob, url = isFile ? URL.createObjectURL(src) : src;
@@ -66,13 +60,10 @@ export function prepImage(src, max = LIMITS.maxSide) {
         c.width = Math.max(1, Math.round(im.width * k)); c.height = Math.max(1, Math.round(im.height * k));
         c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
         let st = { h: 30, s: .3, l: .5, warm: 0 };
-        try {
-          const t = document.createElement('canvas'); t.width = t.height = 24;
-          const y = t.getContext('2d'); y.drawImage(im, 0, 0, 24, 24);
-          const p = y.getImageData(0, 0, 24, 24).data; let r = 0, g = 0, b = 0;
-          for (let i = 0; i < p.length; i += 4) { r += p[i]; g += p[i + 1]; b += p[i + 2]; }
-          const n = p.length / 4; r /= n; g /= n; b /= n;
-          st = { ...rgb2hsl(r, g, b), warm: (r - b) / 255 };
+        try {                                   // цвета, свет и примерный сюжет — по копии 48×48 (js/core/vision.js)
+          const t = document.createElement('canvas'); t.width = t.height = 48;
+          const y = t.getContext('2d'); y.drawImage(im, 0, 0, 48, 48);
+          st = analyzePixels(y.getImageData(0, 0, 48, 48).data, 48, 48);
         } catch (e) { /* остаётся нейтральный цвет */ }
         done(); ok({ url: c.toDataURL('image/jpeg', .72), ...st });
       } catch (e) { done(); no(e); }

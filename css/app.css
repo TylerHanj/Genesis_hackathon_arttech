@@ -156,6 +156,30 @@ ol.thumbs { list-style: none; margin: 0; padding: 0; }
 .thumb-tools button { border: 0; border-radius: 999px; width: 22px; height: 22px; cursor: pointer; background: var(--primary); color: var(--on-primary); font-size: 12px; line-height: 1; padding: 0; }
 .thumb-tools button:disabled { opacity: .35; cursor: default; }
 
+/* ---------- описание песни, анализ звука, контекст дня ---------- */
+.meta-card { display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: center; padding: 10px 12px; border-radius: var(--radius-m); background: var(--tag-soft); }
+.meta-card img, .meta-card .cover-ph { width: 48px; height: 48px; border-radius: 6px; object-fit: cover; display: grid; place-items: center; background: var(--surface-soft); }
+.meta-card b { display: block; font-family: var(--font-display); font-size: 16px; }
+.meta-card small { display: block; color: var(--text-muted); font-size: 12.5px; }
+.meta-card .btn { padding: 7px 14px; font-size: 13px; }
+@media (max-width: 560px) { .meta-card { grid-template-columns: auto 1fr; } .meta-card .bar { grid-column: 1 / -1; } }
+.audio-an, .era-hint { margin: 0; font-size: 13px; font-weight: 600; }
+.era-hint { color: var(--text-muted); font-weight: 500; }
+.ctx .ctx-row { display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: start; }
+.ctx .ctx-row b { display: block; font-size: 14px; }
+.ctx .ctx-row p { margin: 2px 0 0; font-size: 12.5px; color: var(--text-muted); }
+.sw2 { width: 42px; height: 24px; border-radius: 999px; border: 0; padding: 0; cursor: pointer; background: var(--border-strong); position: relative; margin-top: 2px; transition: background-color var(--t-fast) var(--ease); }
+.sw2::after { content: ''; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: var(--bg); transition: left var(--t-fast) var(--ease); }
+.sw2.on { background: var(--primary); }
+.sw2.on::after { left: 21px; background: var(--on-primary); }
+.ctx .city { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+.ctx .city input { flex: 1 1 180px; max-width: 280px; }
+.ctx .city .btn { padding: 8px 14px; font-size: 13px; }
+.ctx-shot { font-weight: 600; color: var(--text) !important; }
+.ctx-status { margin: 0; font-size: 13px; color: var(--text-muted); }
+.preview { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: var(--radius-m); background: var(--tag-soft); font-weight: 600; font-size: 14px; }
+svg.i { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+
 /* ---------- продвинутые настройки ---------- */
 .advanced { border: 1px solid var(--border); border-radius: var(--radius-m); background: color-mix(in srgb, var(--bg) 55%, transparent); }
 .advanced summary { cursor: pointer; padding: 12px 14px; font-weight: 600; display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; list-style: none; }
@@ -328,6 +352,35 @@ main:focus { outline: none; }
   .cv-head h2 { font-size: 28px; }
 }
 
+/* ---------- «Как собран этот день» ---------- */
+.ing { margin-top: 22px; }
+.ing h3 { font-size: 22px; margin: 0 0 12px; }
+.ing-row { display: grid; grid-template-columns: 130px minmax(0, 1fr); gap: 14px; padding: 14px 0; border-top: 1px solid var(--border); }
+.ing-row:first-of-type { border-top: 0; padding-top: 4px; }
+.ing-head { display: flex; align-items: flex-start; gap: 8px; font-weight: 700; font-size: 14px; }
+.ing-head small { display: block; font-weight: 500; font-size: 11.5px; color: var(--text-muted); }
+.ing-body { display: grid; gap: 8px; min-width: 0; }
+.chips2 { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.chips2 .likely { font-size: 12.5px; color: var(--text-muted); margin-right: 2px; }
+.c { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 999px; font-size: 13px; font-weight: 600; background: var(--tag); color: var(--on-tag); }
+.c.o { background: transparent; color: var(--text); border: 1px solid var(--border-strong); }
+.eff { margin: 0; font-size: 12.5px; color: var(--text-muted); }
+.eff b { color: var(--text); font-weight: 600; }
+.pal { display: flex; height: 26px; max-width: 380px; border-radius: var(--radius-s); overflow: hidden; border: 1px solid var(--border); }
+.pal span { flex-basis: 0; display: grid; place-items: center; font: 600 10.5px var(--font-text); color: rgb(0 0 0 / .55); text-shadow: 0 0 2px rgb(255 255 255 / .5); }
+.meter { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 13px; }
+.meter i { position: relative; display: block; width: 120px; height: 6px; border-radius: 6px; background: var(--border); }
+.meter i::after { content: ''; position: absolute; inset: 0 auto 0 0; width: var(--v); border-radius: 6px; background: var(--primary); }
+.song-line { display: flex; align-items: center; gap: 10px; }
+.song-line .cover { width: 40px; height: 40px; border-radius: 6px; object-fit: cover; flex: none; }
+.song-line .cover.ph { display: grid; place-items: center; background: var(--tag); color: var(--on-tag); }
+.song-line b { font-family: var(--font-display); font-size: 16px; }
+.song-line .src { font-size: 12px; color: var(--text-muted); }
+.ing .why-toggle { margin-top: 12px; }
+.ing .why-card { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
+.ing .why-card h4 { font: 600 18px var(--font-display); margin: 0 0 8px; }
+@media (max-width: 560px) { .ing-row { grid-template-columns: 1fr; gap: 8px; } }
+
 /* ---------- «Как это устроено» ---------- */
 .about { display: grid; gap: 18px; max-width: 860px; }
 .about p { margin: 0 0 10px; }
@@ -417,6 +470,36 @@ tr:last-child td, tr:last-child th { border-bottom: 0; }
 .dt { position: absolute; left: 6cqw; top: 5cqw; font: 600 3.4cqw var(--font-text); letter-spacing: .06em; color: var(--si); background: color-mix(in srgb, var(--s1) 70%, transparent); padding: 1cqw 2.4cqw; border-radius: 99px; }
 .ttl { position: absolute; left: 6cqw; right: 6cqw; bottom: 16cqw; font: 600 9.2cqw/1.02 var(--font-display); overflow-wrap: anywhere; }
 .sig { position: absolute; left: 6cqw; right: 6cqw; bottom: 5cqw; font: 500 5.6cqw/1.1 var(--font-hand); opacity: .85; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ---------- эффекты кадра: погода (по согласию или из текста) и эпоха песни ----------
+   Только статичные полупрозрачные слои поверх фото — приём обработки дня не меняется, нагрузка минимальная. */
+.fx-weather, .fx-era, .fx-era::before, .fx-era::after { position: absolute; inset: 0; pointer-events: none; }
+.fx-era::before, .fx-era::after { content: ''; }
+.fx-rain .fx-weather { background: rgb(70 90 120 / .24); }
+.fx-storm .fx-weather { background: rgb(40 50 75 / .4); }
+/* дождь: два слоя коротких штрихов с разным шагом — без анимации, ничего не нагружает */
+.fx-rain .fx-weather::before, .fx-rain .fx-weather::after, .fx-storm .fx-weather::before, .fx-storm .fx-weather::after { content: ''; position: absolute; inset: 0; }
+.fx-rain .fx-weather::before, .fx-storm .fx-weather::before {
+  background: repeating-linear-gradient(104deg, transparent 0 3.1cqw, rgb(255 255 255 / .26) 3.1cqw calc(3.1cqw + 1px));
+  -webkit-mask-image: repeating-linear-gradient(to bottom, rgb(0 0 0) 0 6cqw, transparent 6cqw 10cqw); mask-image: repeating-linear-gradient(to bottom, rgb(0 0 0) 0 6cqw, transparent 6cqw 10cqw); }
+.fx-rain .fx-weather::after, .fx-storm .fx-weather::after {
+  background: repeating-linear-gradient(101deg, transparent 0 4.7cqw, rgb(255 255 255 / .18) 4.7cqw calc(4.7cqw + 1px));
+  -webkit-mask-image: repeating-linear-gradient(to bottom, transparent 0 3cqw, rgb(0 0 0) 3cqw 7cqw, transparent 7cqw 12cqw); mask-image: repeating-linear-gradient(to bottom, transparent 0 3cqw, rgb(0 0 0) 3cqw 7cqw, transparent 7cqw 12cqw); }
+.fx-storm .fx-weather::before { background: repeating-linear-gradient(100deg, transparent 0 2.2cqw, rgb(255 255 255 / .3) 2.2cqw calc(2.2cqw + 1px)); }
+.fx-snow .fx-weather { background: radial-gradient(circle, rgb(255 255 255 / .95) .4cqw, transparent .55cqw) 0 0 / 5cqw 5cqw, radial-gradient(circle, rgb(255 255 255 / .8) .6cqw, transparent .8cqw) 2cqw 3cqw / 9cqw 9cqw, linear-gradient(rgb(225 235 245 / .22), rgb(225 235 245 / .22)); }
+.fx-clear .fx-weather { background: radial-gradient(circle at 82% 12%, rgb(255 250 220 / .9), rgb(255 220 140 / .4) 18%, transparent 46%), radial-gradient(circle at 58% 38%, rgb(255 230 180 / .3) 0 4%, transparent 5%); mix-blend-mode: screen; }
+.fx-fog .fx-weather { background: linear-gradient(to top, rgb(235 235 235 / .55), rgb(235 235 235 / .15) 60%, rgb(235 235 235 / .3)); }
+.fx-clouds .fx-weather { background: linear-gradient(rgb(120 125 135 / .22), transparent 55%); }
+.era-pre60 .fx-era::before { background: rgb(128 128 128); mix-blend-mode: saturation; }
+.era-pre60 .fx-era::after { box-shadow: inset 0 0 18cqw rgb(30 20 10 / .55); background: rgb(112 80 40 / .12); }
+.era-e60 .fx-era::before { background: rgb(112 66 20 / .42); mix-blend-mode: color; }
+.era-e60 .fx-era::after { box-shadow: inset 0 0 0 3cqw rgb(250 243 224 / .9), inset 0 0 16cqw rgb(60 40 20 / .4); border-radius: inherit; }
+.era-e80 .fx-era::before { background: linear-gradient(160deg, rgb(255 40 160), rgb(40 220 255)); mix-blend-mode: color; opacity: .6; }
+.era-e80 .fx-era::after { background: repeating-linear-gradient(0deg, rgb(0 0 0 / .16) 0 1px, transparent 1px 3px); }
+.era-e90 .fx-era::before { background: rgb(60 140 110 / .2); mix-blend-mode: soft-light; }
+.era-e90 .fx-era::after { background: repeating-linear-gradient(0deg, rgb(255 255 255 / .05) 0 1px, transparent 1px 4px); }
+.era-e00 .fx-era::before { background: rgb(80 120 200 / .16); mix-blend-mode: soft-light; }
+.era-e90 .dt, .era-e00 .dt { font-family: ui-monospace, Menlo, monospace; color: rgb(255 157 46); background: none; text-shadow: 0 0 .6cqw rgb(255 120 0 / .6); }
 
 /* ---------- адаптивность: на телефоне боковая колонка уходит в меню, панель — под карту ---------- */
 @media (max-width: 900px) {

@@ -27,12 +27,14 @@ export function Scene({ d, live = true }) {
     return () => clearInterval(tm);
   }, [live, n, st.sec, col]);
   const sig = d.text.split(/[.!?\n]/)[0].trim().split(/\s+/).slice(0, 9).join(' ');
-  return html`<div class=${'scene t-' + st.tech} style=${{ '--s1': st.s1, '--s2': st.s2, '--sa': st.sa, '--si': st.si, '--g': st.grain }} aria-hidden=${live ? undefined : 'true'}>
+  const fx = st.fx || {}, wcls = fx.weather && !(fx.weather === 'clear' && st.dark) ? ' fx-' + fx.weather : '', ecls = fx.era ? ' era-' + fx.era : '';
+  return html`<div class=${'scene t-' + st.tech + wcls + ecls} style=${{ '--s1': st.s1, '--s2': st.s2, '--sa': st.sa, '--si': st.si, '--g': st.grain }} aria-hidden=${live ? undefined : 'true'}>
     ${d.photos.slice(0, col ? 3 : n).map((p, k) => html`<div key=${k} class=${'ph' + (col || k === i ? ' on' : '')} style=${{ backgroundImage: `url("${p.url}")`, ...(col ? collage(k) : {}) }}></div>`)}
     ${st.tech === 'kandinsky' && html`<div class="duo"></div>`}
     ${st.tech === 'kandinsky' && html`<${Kand} d=${d}/>`}
     ${st.tech === 'monet' && html`<div class="wash"></div>`}
     ${st.tech === 'minimal' && html`<div class="dot"></div>`}
+    ${ecls && html`<div class="fx-era"></div>`}${wcls && html`<div class="fx-weather"></div>`}
     <div class="grain"></div>${st.tech === 'film' && html`<div class="vig"></div>`}<div class="scrim"></div>
     <div class="dt">${t.date(d.date)}</div><div class="ttl">${d.title}</div><div class="sig">${sig}…</div>
   </div>`;

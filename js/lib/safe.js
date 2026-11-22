@@ -4,12 +4,15 @@
    а когда появятся публичные воспоминания (этап 3), это станет чужой ввод.
    Неизвестные поля отбрасываются (защита от prototype pollution и мусора).
    ===================================================================== */
-import { TECHS } from '../core/analysis.js';
+import { TECHS, WEATHER_KINDS, ERAS } from '../core/analysis.js';
+import { SCENE_TAGS } from '../core/vision.js';
 import { parseTrackLink } from './links.js';
 
 const COLOR = /^hsl\(\d{1,3}(?:\.\d+)? \d{1,3}(?:\.\d+)?% \d{1,3}(?:\.\d+)?%\)$/;
 const PHOTO = /^data:image\/(?:jpeg|png|webp|gif);base64,[A-Za-z0-9+/]+=*$/;
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
+const HEX = /^#[0-9a-f]{6}$/;
+const COVER = /^https:\/\/is\d{1,2}-ssl\.mzstatic\.com\/image\/thumb\/[A-Za-z0-9/._-]{1,300}$/;
 
 const str = (v, max) => (typeof v === 'string' ? v.slice(0, max) : '');
 const num = (v, lo, hi, d) => (typeof v === 'number' && isFinite(v) ? Math.max(lo, Math.min(hi, v)) : d);
@@ -25,7 +28,15 @@ export function sanitizeDay(raw) {
   const st = raw.style && typeof raw.style === 'object' ? raw.style : {};
   const photos = (Array.isArray(raw.photos) ? raw.photos : []).slice(0, 4)
     .filter(p => p && typeof p.url === 'string' && PHOTO.test(p.url))
-    .map(p => ({ url: p.url, h: num(p.h, 0, 360, 30), s: num(p.s, 0, 1, .3), l: num(p.l, 0, 1, .5), warm: num(p.warm, -1, 1, 0) }));
+    .map(p => {
+      const o = { url: p.url, h: num(p.h, 0, 360, 30), s: num(p.s, 0, 1, .3), l: num(p.l, 0, 1, .5), warm: num(p.warm, -1, 1, 0) };
+      if (Array.isArray(p.dom)) {                                             // новые фото: главные цвета, свет, примерный сюжет
+        o.dom = p.dom.slice(0, 5).filter(x => Array.isArray(x) && HEX.test(x[0]) && isFinite(x[1])).map(x => [x[0], num(x[1], 0, 1, 0)]);
+        o.lum = num(p.lum, 0, 1, .5); o.con = num(p.con, 0, 1, .3);
+        o.tags = (Array.isArray(p.tags) ? p.tags : []).filter(x => SCENE_TAGS.includes(x)).slice(0, 6);
+      }
+      return o;
+    });
   const sg = raw.song && typeof raw.song === 'object' ? raw.song : {};
   const link = str(sg.link, 2048);
   const song = {
@@ -34,7 +45,13 @@ export function sanitizeDay(raw) {
     artist: str(sg.artist, 120), genre: str(sg.genre, 40), year: str(sg.year, 12),
     bpm: num(sg.bpm, 40, 220, 118), mode: sg.mode === 'minor' ? 'minor' : 'major', energy: num(sg.energy, 0, 1, .6),
     fileName: str(sg.fileName, 120), start: Math.round(num(sg.start, 0, 36000, 0)),
+    title: str(sg.title, 140),
+    cover: typeof sg.cover === 'string' && COVER.test(sg.cover) ? sg.cover : '',
   };
+  if (sg.an && typeof sg.an === 'object') {                                  // анализ звука или описание песни
+    song.an = { bpm: Math.round(num(sg.an.bpm, 40, 220, 118)), mode: sg.an.mode === 'minor' ? 'minor' : 'major', energy: num(sg.an.energy, 0, 1, .5),
+      bright: num(sg.an.bright, 0, 1, .5), conf: num(sg.an.conf, 0, 1, 0), src: sg.an.src === 'meta' ? 'meta' : 'audio' };
+  }
   const v = st.voice && typeof st.voice === 'object' ? st.voice : {};
   const style = {
     tech: TECHS.includes(st.tech) ? st.tech : 'film',
@@ -43,10 +60,24 @@ export function sanitizeDay(raw) {
     aro: num(st.aro, 0, 1, .5), val: num(st.val, 0, 1, .5), dark: st.dark === true,
     voice: { rate: num(v.rate, .5, 2, 1), pitch: num(v.pitch, .5, 2, 1), key: ['warm', 'fast', 'low', 'even'].includes(v.key) ? v.key : undefined },
   };
+  if (st.fx && typeof st.fx === 'object') {
+    const fx = {};
+    if (WEATHER_KINDS.includes(st.fx.weather)) fx.weather = st.fx.weather;
+    if (ERAS.includes(st.fx.era)) fx.era = st.fx.era;
+    if (fx.weather || fx.era) style.fx = fx;
+  }
   const day = {
     id, date: DATE.test(raw.date) ? raw.date : '', text: str(raw.text, 20000), title: str(raw.title, 140) || '…',
     manualTitle: raw.manualTitle === true, photos, song, style,
   };
+  const cx = raw.ctx;
+  if (cx && typeof cx === 'object') {                                        // контекст дня (только по согласию; координат здесь нет)
+    const c = {};
+    if (typeof cx.place === 'string' && cx.place.trim()) c.place = str(cx.place.trim(), 80);
+    if (cx.weather && WEATHER_KINDS.includes(cx.weather.kind)) c.weather = { kind: cx.weather.kind, code: Math.round(num(cx.weather.code, 0, 99, 0)), t: Math.round(num(cx.weather.t, -80, 60, 0)) };
+    if (isFinite(cx.hour)) c.hour = Math.round(num(cx.hour, 0, 23, 12));
+    if (c.place || c.weather || c.hour != null) day.ctx = c;
+  }
   const md = raw.mood;
   if (md && typeof md === 'object' && isFinite(md.valence) && isFinite(md.energy)) day.mood = { valence: num(md.valence, -1, 1, 0), energy: num(md.energy, -1, 1, 0) };
   // устаревшее место на карте (теперь раскладка хранится отдельно, см. store.layout)

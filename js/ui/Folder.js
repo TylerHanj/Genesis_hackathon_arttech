@@ -2,17 +2,18 @@
 import { html, useState, useEffect } from '../lib/react.js';
 import { ls } from '../lib/util.js';
 import { useVoices, vScore, speak, stopSpeak, textLang } from '../lib/voice.js';
-import { explain, voiceKeyOf, moodSector, isMood } from '../core/analysis.js';
+import { moodSector, isMood } from '../core/analysis.js';
 import { useT } from '../i18n/index.js';
 import { Scene } from './Scene.js';
 import { Player } from './Player.js';
 import { DayForm } from './DayForm.js';
 import { MoodFace } from './MoodFace.js';
+import { Ingredients } from './Ingredients.js';
 
 export function Folder({ d, onBack, onSave, onDelete }) {
   const t = useT();
   const st = d.style, s = d.song;
-  const [edit, setEdit] = useState(false), [ask, setAsk] = useState(false), [more, setMore] = useState(false);
+  const [edit, setEdit] = useState(false), [ask, setAsk] = useState(false);
   const voices = useVoices(textLang(d.text)), [vn, setVn] = useState(ls.get('dd-voice', ''));
   useEffect(() => stopSpeak, []);
   useEffect(() => {                                   // фон мягко светится цветом дня (статичный градиент, см. app.css)
@@ -42,17 +43,7 @@ export function Folder({ d, onBack, onSave, onDelete }) {
           <select value=${voice ? voice.name : ''} onChange=${e => { setVn(e.target.value); ls.set('dd-voice', e.target.value); }}>
             ${sorted.map(v => html`<option key=${v.name} value=${v.name}>${v.name}</option>`)}</select>
           <span class="hint">${t('folder.voiceHint')}</span></label>`}
-        <div class="why-toggle"><button class="btn ghost" aria-expanded=${more} onClick=${() => setMore(!more)}>${more ? t('folder.hideWhy') : t('folder.why')}</button></div>
-        ${more && html`<div class="card why-card">
-          <h3>${t(`tech.${st.tech}.name`)}</h3>
-          <ul class="why">${explain(d, t).map((w, k) => html`<li key=${k}>${w}</li>`)}</ul>
-          <div class="swatches" aria-label=${t('folder.palette')}>${[st.s1, st.s2, st.sa, st.si].map((c, k) => html`<span key=${k} style=${{ background: c }}></span>`)}</div>
-          <ul class="files">
-            <li>${t('folder.fileText')}</li><li>${t('folder.filePhotos', { n: d.photos.length })}</li>
-            <li>${t('folder.fileSong', { s: s.fileName || s.link || mus || '—' })}</li><li>${t('folder.fileMemory')}</li>
-            <li>${t('folder.fileVoice', { d: t('voice.' + voiceKeyOf(st)) })}</li>
-          </ul>
-        </div>`}
+        <${Ingredients} d=${d}/>
       </div>
     </div>
   </div>`;

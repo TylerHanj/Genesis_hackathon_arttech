@@ -9,9 +9,12 @@
    ===================================================================== */
 import { html, useState, useEffect, useRef } from '../lib/react.js';
 import { todayLocal, isValidDate, uid } from '../lib/util.js';
-import { checkAudio, prepImage, audioEnergy } from '../lib/files.js';
+import { checkAudio, prepImage } from '../lib/files.js';
 import { parseTrackLink } from '../lib/links.js';
-import { makeDay, DEFAULT_SONG, moodToMusicParams, isMood } from '../core/analysis.js';
+import { makeDay, DEFAULT_SONG, moodToMusicParams, isMood, genreProfile, eraOf } from '../core/analysis.js';
+import { analyzeAudioFile } from '../core/audio.js';
+import { fetchSongMeta } from '../lib/musicmeta.js';
+import { ContextBlock } from './ContextBlock.js';
 import { useT } from '../i18n/index.js';
 import { MoodMap } from './MoodMap.js';
 import { PhotoPicker } from './PhotoPicker.js';
@@ -33,30 +36,57 @@ export function DayForm({ init, onSave, onCancel }) {
   const [f, setF] = useState({
     date: init ? init.date : todayLocal(), text: init ? init.text : '',
     link: s0.link || '', artist: s0.artist || '', year: s0.year || '', start: fmtStart(s0.start || 0),
+    songTitle: s0.title || '', genre: s0.genre || '', cover: s0.cover || '',
     title: init && init.manualTitle ? init.title : '',
   });
   const [mood, setMood] = useState(init && isMood(init.mood) ? init.mood : null);
   const [items, setItems] = useState(() => (init ? init.photos.map((p, i) => ({ key: 'keep-' + i, kind: 'keep', url: p.url, p })) : []));
-  const [audio, setAudio] = useState(null), [measured, setMeasured] = useState(null), [manualEnergy, setManualEnergy] = useState(null);
+  const [audio, setAudio] = useState(null), [manualEnergy, setManualEnergy] = useState(null);
+  const [an, setAn] = useState(s0.an && s0.an.src === 'audio' ? s0.an : null), [listening, setListening] = useState(false);
+  const [meta, setMeta] = useState(null), [metaState, setMetaState] = useState(s0.title ? 'accepted' : 'idle');
+  const [metaLink, setMetaLink] = useState(s0.title ? (s0.link || '') : '');   // для какой ссылки описание уже принято/отклонено
+  const [ctx, setCtx] = useState(init && init.ctx ? init.ctx : {});
   const [err, setErr] = useState(''), [busy, setBusy] = useState(false);
   const set = (k, v) => setF(o => ({ ...o, [k]: v }));
   const itemsRef = useRef(items); itemsRef.current = items;
   useEffect(() => () => itemsRef.current.forEach(x => x.kind === 'file' && URL.revokeObjectURL(x.url)), []);
 
-  /* A1: параметры песни. Настроение отмечено → из него; иначе — как было у записи (или по умолчанию). */
-  const base = mood ? moodToMusicParams(mood.valence, mood.energy)
-    : { bpm: s0.bpm || DEFAULT_SONG.bpm, mode: s0.mode || DEFAULT_SONG.mode, energy: s0.energy == null ? DEFAULT_SONG.energy : s0.energy };
-  const energy = manualEnergy != null ? manualEnergy : measured != null ? measured : base.energy;
-  const energyNote = manualEnergy != null ? t('adv.manual') : measured != null ? t('form.measured') : mood ? t('adv.auto') : '';
+  /* Параметры песни: сначала сама песня (анализ звука файла → жанр из описания), потом настроение, потом прежние значения. */
+  const fromMood = mood ? moodToMusicParams(mood.valence, mood.energy) : null, prof = genreProfile(f.genre);
+  let base, src;
+  if (an && an.bpm) { base = { bpm: an.bpm, mode: an.mode, energy: an.energy }; src = 'audio'; }
+  else if (prof) { base = { bpm: prof.bpm, energy: prof.energy, mode: fromMood ? fromMood.mode : (s0.mode || DEFAULT_SONG.mode) }; src = 'meta'; }
+  else if (fromMood) { base = fromMood; src = 'mood'; }
+  else { base = { bpm: s0.bpm || DEFAULT_SONG.bpm, mode: s0.mode || DEFAULT_SONG.mode, energy: s0.energy == null ? DEFAULT_SONG.energy : s0.energy }; src = ''; }
+  const energy = manualEnergy != null ? manualEnergy : base.energy;
+  const energyNote = manualEnergy != null ? t('adv.manual') : src === 'audio' ? t('form.measured') : src === 'meta' ? t('adv.fromGenre') : src === 'mood' ? t('adv.auto') : '';
+  const era = eraOf(f.year);
 
   async function pickAudio(e) {
     const a = e.target.files[0]; setErr(''); e.target.value = '';
     if (!a) return;
     const c = await checkAudio(a);
     if (!c.ok) { setErr(c.code === 'size' ? t('form.audioSize', { name: c.name, mb: c.mb }) : t('form.audioType', { name: c.name })); return; }
-    setAudio(a); setMeasured(null);
-    try { setMeasured(Math.round(await audioEnergy(a) * 100) / 100); } catch (x) { /* останется энергия по настроению */ }
+    setAudio(a); setAn(null); setListening(true);
+    try { setAn(await analyzeAudioFile(a)); } catch (x) { /* не удалось разобрать звук — останутся значения по настроению */ }
+    setListening(false);
   }
+
+  /* Описание песни по ссылке (если развёрнута функция music-meta): предлагаем, пользователь подтверждает */
+  useEffect(() => {
+    const p = parseTrackLink(f.link.trim());
+    if (!p || p.source === 'url' || f.link.trim() === metaLink) return undefined;
+    let alive = true;
+    const tm = setTimeout(async () => {
+      setMetaState('loading');
+      const m = await fetchSongMeta(f.link.trim());
+      if (!alive) return;
+      setMeta(m); setMetaState(m ? 'found' : 'idle');
+    }, 700);
+    return () => { alive = false; clearTimeout(tm); };
+  }, [f.link]);
+  const acceptMeta = () => { setF(o => ({ ...o, songTitle: meta.title, artist: meta.artist || o.artist, year: meta.year || o.year, genre: meta.genre, cover: meta.cover })); setMetaState('accepted'); setMeta(null); setMetaLink(f.link.trim()); };
+  const files = items.filter(x => x.kind === 'file').map(x => x.file);
 
   async function submit() {
     if (!isValidDate(f.date)) { setErr(t('form.badDate')); return; }
@@ -70,11 +100,12 @@ export function DayForm({ init, onSave, onCancel }) {
       const photos = [];
       for (const x of items) photos.push(x.kind === 'keep' ? x.p : await prepImage(x.file));
       const fileUrl = audio ? URL.createObjectURL(audio) : (s0.fileUrl || null);
+      const songAn = src === 'audio' ? { ...an, src: 'audio' } : src === 'meta' ? { bpm: base.bpm, mode: base.mode, energy: base.energy, src: 'meta' } : null;
       const day = makeDay({
-        id: init && init.id, date: f.date, text: f.text.slice(0, 20000), photos, mood, customTitle: f.title.trim().slice(0, 140), newId: uid,
+        id: init && init.id, date: f.date, text: f.text.slice(0, 20000), photos, mood, ctx, customTitle: f.title.trim().slice(0, 140), newId: uid,
         song: {
-          link, artist: f.artist.slice(0, 120), year: f.year.slice(0, 12), bpm: base.bpm, mode: base.mode, energy: +energy, start,
-          ...(s0.genre && !mood ? { genre: s0.genre } : {}),
+          link, artist: f.artist.slice(0, 120), year: f.year.slice(0, 12), title: f.songTitle.slice(0, 140), bpm: base.bpm, mode: base.mode, energy: +energy, start,
+          ...(f.genre ? { genre: f.genre.slice(0, 60) } : {}), ...(f.cover ? { cover: f.cover } : {}), ...(songAn ? { an: songAn } : {}),
           fileName: audio ? audio.name.slice(0, 120) : (s0.fileName || ''), fileUrl,
         },
       });
@@ -97,21 +128,34 @@ export function DayForm({ init, onSave, onCancel }) {
           <p class="hint soft">${t('form.songRecommend')}</p>
           <label>${t('form.songLink')}<span class="hint">${t('form.songLinkHint')}</span>
             <input type="url" inputMode="url" maxLength="2048" value=${f.link} onChange=${e => set('link', e.target.value)} placeholder="https://…"/></label>
+          ${metaState === 'loading' && html`<p class="hint" role="status">${t('meta.loading')}</p>`}
+          ${metaState === 'found' && meta && html`<div class="meta-card" role="group" aria-label=${t('meta.found')}>
+            ${meta.cover ? html`<img src=${meta.cover} alt="" width="48" height="48" loading="lazy" referrerpolicy="no-referrer"/>` : html`<span class="cover-ph" aria-hidden="true">♪</span>`}
+            <div><span class="hint">${t('meta.found')}</span><b>${meta.title}</b><small>${[meta.artist, meta.year, meta.genre].filter(Boolean).join(' · ')}</small></div>
+            <div class="bar"><button type="button" class="btn" onClick=${acceptMeta}>${t('meta.accept')}</button>
+              <button type="button" class="btn ghost" onClick=${() => { setMeta(null); setMetaState('rejected'); setMetaLink(f.link.trim()); }}>${t('meta.reject')}</button></div>
+          </div>`}
+          ${metaState === 'accepted' && f.songTitle && html`<p class="hint">♪ ${[f.songTitle, f.artist, f.year, f.genre].filter(Boolean).join(' · ')}</p>`}
           <div class="audio-pick">
             <label class="btn ghost file-btn">${t('audio.choose')}
               <input class="sr-only" type="file" accept="audio/mpeg,audio/mp4,audio/x-m4a,audio/ogg,.mp3,.m4a,.ogg" onChange=${pickAudio}/></label>
             ${audio
-              ? html`<span class="file-name">♪ ${audio.name}</span><button type="button" class="link-btn" onClick=${() => { setAudio(null); setMeasured(null); }}>${t('audio.remove')}</button>`
+              ? html`<span class="file-name">♪ ${audio.name}</span><button type="button" class="link-btn" onClick=${() => { setAudio(null); setAn(null); }}>${t('audio.remove')}</button>`
               : html`<span class="hint">${s0.fileName ? '♪ ' + s0.fileName + ' · ' : ''}${t('form.songFileHint')}</span>`}
           </div>
+          ${listening && html`<p class="hint" role="status">${t('audio.analyzing')}</p>`}
+          ${an && an.bpm > 0 && html`<p class="audio-an" role="status">${t('audio.result', { bpm: an.bpm, mode: an.mode === 'minor' ? t('form.minor') : t('form.major'), key: an.key || '', e: Math.round(an.energy * 100) })}</p>`}
         </div>
+        <${ContextBlock} value=${ctx} onChange=${setCtx} date=${f.date} setDate=${d => set('date', d)} files=${files}/>
         <details class="advanced">
           <summary>${t('adv.title')}<span class="hint">${t('adv.hint')}</span></summary>
           <div class="adv-body">
+            <label>${t('meta.title')}<input type="text" maxLength="140" value=${f.songTitle} onChange=${e => set('songTitle', e.target.value)}/></label>
             <div class="row">
               <label>${t('form.artist')}<input type="text" maxLength="120" value=${f.artist} onChange=${e => set('artist', e.target.value)}/></label>
               <label>${t('form.year')}<input type="text" maxLength="12" inputMode="numeric" value=${f.year} onChange=${e => set('year', e.target.value)}/></label>
             </div>
+            ${era && html`<p class="era-hint">${t('ing.era', { era: t('era.' + era) })} → ${t('eraFx.' + era)}</p>`}
             <label>${t('adv.energy', { n: Math.round(energy * 100) })}${energyNote}
               <input type="range" min="0" max="1" step=".05" value=${energy} onChange=${e => setManualEnergy(+e.target.value)}/></label>
             ${manualEnergy != null && html`<button type="button" class="link-btn" onClick=${() => setManualEnergy(null)}>${t('adv.reset')}</button>`}
