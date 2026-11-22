@@ -1,10 +1,10 @@
 /* Оболочка приложения: вход, раскладка с боковой панелью (макет со скриншота 2), разделы. */
 import { html, useState, useEffect, useMemo, useRef } from '../lib/react.js';
 import { ls, uid, todayLocal } from '../lib/util.js';
-import { sb, auth, store, AppError, META_V } from '../lib/backend.js';
+import { sb, auth, store, AppError, META_V, urlIntent } from '../lib/backend.js';
 import { seedDays } from '../core/demo.js';
 import { I18n, makeT, detectLang, isLang } from '../i18n/index.js';
-import { Auth } from './Auth.js';
+import { Auth, AuthHero, NewPassword } from './Auth.js';
 import { DayForm } from './DayForm.js';
 import { Folder } from './Folder.js';
 import { MemoryMap, defaultCats, upgradeCats, resetMapView, catLabel } from './MemoryMap.js';
@@ -52,6 +52,8 @@ export function App() {
   const [palette, setPalette] = usePalette();
 
   const [user, setUser] = useState(undefined);
+  /* восстановление пароля: пришли по ссылке из письма → сначала «Новый пароль»; из меню — «Сменить пароль» */
+  const [recovering, setRecovering] = useState(urlIntent.recovery), [pwChange, setPwChange] = useState(false);
   const [tab, setTab] = useState('map'), [open, setOpen] = useState(null), [note, setNote] = useState('');
   const [catView, setCatView] = useState(null);   // открытая категория («внутри пузыря»)
   const [focus, setFocus] = useState(null), [hiDay, setHiDay] = useState(null);   // поиск: куда лететь на карте и что подсветить
@@ -63,6 +65,7 @@ export function App() {
     if (!sb) return undefined;
     auth.session().then(setUser, () => setUser(null));
     return auth.onChange((event, u) => {
+      if (event === 'PASSWORD_RECOVERY') setRecovering(true);
       if (event === 'SIGNED_OUT') setUser(null);
       else if (u) setUser(prev => (prev && prev.id === u.id ? prev : u));
     });
@@ -115,7 +118,7 @@ export function App() {
     setFocus({ type: it.type, id: it.id, n: Date.now() });
   };
   const focusDone = ({ enter, day }) => { setFocus(null); if (enter) { enterCat(enter); setHiDay(day); } };
-  const logout = async () => { await auth.signOut(); resetMapView(); setOpen(null); setCatView(null); clearUrl(); setUser(null); };
+  const logout = async () => { await auth.signOut(); resetMapView(); setOpen(null); setCatView(null); setRecovering(false); setPwChange(false); clearUrl(); setUser(null); };
 
   /* Категория в адресе (?cat=…): кнопка «Назад» браузера работает, параметр принимается только из списка своих категорий. */
   const catFromUrl = () => { const id = new URLSearchParams(location.search).get('cat'); return id && metaRef.current.cats.some(c => c.id === id) ? id : null; };
@@ -132,7 +135,7 @@ export function App() {
     const c = metaRef.current.cats.find(x => x.id === to);
     saveMeta({ layout: { ...metaRef.current.layout, [id]: c ? { x: c.x, y: c.y, cat: c.id } : { ...looseSpot(id), cat: null } } });
   };
-  const go = k => { setTab(k); setOpen(null); setCatView(null); setHiDay(null); setFocus(null); setDate0(null); clearUrl(); };
+  const go = k => { setTab(k); setOpen(null); setCatView(null); setHiDay(null); setFocus(null); setDate0(null); setPwChange(false); clearUrl(); };
   const newOn = d => { go('new'); setDate0(d); };                       // «Записать этот день» из календаря
   const toCal = (d, view) => {                                          // из маленького календаря слева
     const today = todayLocal();
@@ -144,7 +147,7 @@ export function App() {
   const NAV = [['map', 'nav.map'], ['calendar', 'nav.calendar'], ['new', 'nav.new'], ['about', 'nav.about']];
   const navItems = NAV.map(([k, l]) => ({ key: k, label: t(l), on: tab === k && !cur, go: () => go(k) }));
   /* на телефоне основные разделы — в нижней панели, в меню «≡» остаётся только «Как это устроено» */
-  const menu = html`<${Menu} lang=${lang} setLang=${setLang} theme=${theme} setTheme=${setTheme} palette=${palette} setPalette=${setPalette} user=${user} onLogout=${logout} nav=${user ? navItems.slice(3) : null}/>`;
+  const menu = html`<${Menu} lang=${lang} setLang=${setLang} theme=${theme} setTheme=${setTheme} palette=${palette} setPalette=${setPalette} user=${user} onLogout=${logout} onPassword=${() => { go(tab); setPwChange(true); }} nav=${user ? navItems.slice(3) : null}/>`;
   const TABS = [['map', 'map'], ['calendar', 'calendar'], ['new', 'plus']];
 
   let body;
@@ -155,12 +158,18 @@ export function App() {
   } else if (!user) {
     body = html`<div class="auth-screen">
       <header class="auth-top"><${Brand} t=${t}/>${menu}</header>
-      <main id="main"><${Auth} onUser=${setUser}/></main>
+      <main id="main" class="auth-main"><${AuthHero}/><${Auth} onUser=${setUser} linkError=${urlIntent.error}/></main>
+    </div>`;
+  } else if (recovering) {
+    body = html`<div class="auth-screen">
+      <header class="auth-top"><${Brand} t=${t}/>${menu}</header>
+      <main id="main" class="auth-main single"><${NewPassword} mode="recovery" onDone=${() => setRecovering(false)} onCancel=${logout}/></main>
     </div>`;
   } else {
     const navBtn = n => html`<button key=${n.key} class=${'nav-btn' + (n.on ? ' on' : '')} aria-current=${n.on ? 'page' : undefined} onClick=${n.go}>${n.label}</button>`;
     let content;
     if (!loaded) content = html`<div class="skeleton" aria-busy="true" aria-label=${t('loading')}></div>`;
+    else if (pwChange) content = html`<div class="pw-page"><${NewPassword} mode="change" onDone=${() => setPwChange(false)} onCancel=${() => setPwChange(false)}/></div>`;
     else if (cur) {
       const w = sorter(cur), c = meta.cats.find(x => x.id === w.cat);
       content = html`<${Folder} key=${cur.id} d=${cur} where=${{ ...w, name: c ? catLabel(c, t) : '' }} onBack=${() => setOpen(null)} onSave=${saveDay} onDelete=${del}/>`;

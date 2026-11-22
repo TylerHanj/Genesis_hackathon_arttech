@@ -10,6 +10,19 @@ import { CONFIG } from '../config.js';
 import { ls } from './util.js';
 import { sanitizeDay, sanitizeCats, sanitizeLayout } from './safe.js';
 
+/* Ссылка из письма «Сброс пароля»: Supabase возвращает на сайт с #…&type=recovery (или с ошибкой, если ссылка
+   устарела или уже использована). Читаем адрес ДО создания клиента: клиент сам разберёт токены и уберёт их из адреса. */
+export const urlIntent = (() => {
+  try {
+    const h = new URLSearchParams((location.hash || '').replace(/^#/, '')), q = new URLSearchParams(location.search || '');
+    const code = h.get('error_code') || q.get('error_code') || h.get('error') || q.get('error');
+    const desc = (h.get('error_description') || q.get('error_description') || '').toLowerCase();
+    const out = { recovery: h.get('type') === 'recovery' || q.get('type') === 'recovery', error: code ? (/expired|invalid/.test(code + desc) ? 'expired' : 'failed') : null };
+    if (out.error) history.replaceState(null, '', location.pathname);      // не оставлять ошибку и параметры в адресе
+    return out;
+  } catch (e) { return { recovery: false, error: null }; }
+})();
+
 export const sb = (window.supabase && CONFIG.SUPABASE_URL && CONFIG.SUPABASE_PUBLISHABLE_KEY)
   ? window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_PUBLISHABLE_KEY, {
       auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
@@ -32,6 +45,15 @@ function authErrorKey(e, mode) {
   if (status === 429 || /rate_limit/.test(code)) return 'auth.rate';
   if (code === 'weak_password') return 'auth.weak';
   return mode === 'up' ? 'auth.failUp' : 'auth.failIn';
+}
+function pwErrorKey(e) {
+  const code = (e && e.code) || '', status = e && e.status;
+  if (status === 429 || /rate_limit/.test(code)) return 'auth.rate';
+  if (code === 'weak_password') return 'auth.weak';
+  if (code === 'same_password') return 'auth.samePw';
+  if (code === 'reauthentication_needed') return 'auth.reauth';
+  if (status === 401 || status === 403 || code === 'session_not_found' || code === 'session_expired') return 'auth.linkExpired';
+  return 'auth.pwFail';
 }
 function dbErrorKey(e) {
   const code = (e && e.code) || '';
@@ -56,6 +78,20 @@ export const auth = {
     const { data, error } = await sb.auth.signInWithPassword({ email, password });
     if (error) { log('signIn', error); throw new AppError(authErrorKey(error, 'in'), error); }
     return { id: data.user.id, email: data.user.email || email };
+  },
+  /* Письмо со ссылкой для нового пароля. Ответ всегда нейтральный: не раскрываем, есть ли такой адрес. */
+  async resetPassword(email) {
+    const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: location.origin + location.pathname });
+    if (error) {
+      log('reset', error);
+      if (error.status === 429 || /rate_limit/.test(error.code || '')) throw new AppError('auth.rate', error);
+      if (error.status >= 500 || !error.status) throw new AppError('auth.resetFail', error);
+    }
+  },
+  /* Новый пароль: после перехода по ссылке из письма (сессия восстановления) или из меню «Сменить пароль». */
+  async setPassword(password) {
+    const { error } = await sb.auth.updateUser({ password });
+    if (error) { log('setPassword', error); throw new AppError(pwErrorKey(error), error); }
   },
   async signOut() {
     try { await sb.auth.signOut(); } catch (e) { log('signOut', e); }
