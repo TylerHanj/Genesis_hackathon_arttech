@@ -1,6 +1,6 @@
 /* Оболочка приложения: вход, раскладка с боковой панелью (макет со скриншота 2), разделы. */
 import { html, useState, useEffect, useMemo, useRef } from '../lib/react.js';
-import { ls, uid } from '../lib/util.js';
+import { ls, uid, todayLocal } from '../lib/util.js';
 import { sb, auth, store, AppError, META_V } from '../lib/backend.js';
 import { seedDays } from '../core/demo.js';
 import { I18n, makeT, detectLang, isLang } from '../i18n/index.js';
@@ -9,6 +9,8 @@ import { DayForm } from './DayForm.js';
 import { Folder } from './Folder.js';
 import { MemoryMap, defaultCats, upgradeCats, resetMapView, catLabel } from './MemoryMap.js';
 import { Search } from './Search.js';
+import { Calendar, MiniCalendar } from './Calendar.js';
+import { Icon } from './Icons.js';
 import { makeSorter, manualCat, isStdCat } from '../core/sorter.js';
 import { SidePanel } from './SidePanel.js';
 import { About } from './About.js';
@@ -53,6 +55,7 @@ export function App() {
   const [tab, setTab] = useState('map'), [open, setOpen] = useState(null), [note, setNote] = useState('');
   const [catView, setCatView] = useState(null);   // открытая категория («внутри пузыря»)
   const [focus, setFocus] = useState(null), [hiDay, setHiDay] = useState(null);   // поиск: куда лететь на карте и что подсветить
+  const [cal, setCal] = useState({ sel: null, view: null }), [date0, setDate0] = useState(null);   // календарь: выбранный день и месяц; дата для новой записи
   const [days, setDays] = useState([]), [meta, setMeta] = useState({ cats: [], layout: {} }), [loaded, setLoaded] = useState(false);
   const metaRef = useRef(meta); metaRef.current = meta;
 
@@ -129,11 +132,20 @@ export function App() {
     const c = metaRef.current.cats.find(x => x.id === to);
     saveMeta({ layout: { ...metaRef.current.layout, [id]: c ? { x: c.x, y: c.y, cat: c.id } : { ...looseSpot(id), cat: null } } });
   };
-  const go = k => { setTab(k); setOpen(null); setCatView(null); setHiDay(null); setFocus(null); clearUrl(); };
+  const go = k => { setTab(k); setOpen(null); setCatView(null); setHiDay(null); setFocus(null); setDate0(null); clearUrl(); };
+  const newOn = d => { go('new'); setDate0(d); };                       // «Записать этот день» из календаря
+  const toCal = (d, view) => {                                          // из маленького календаря слева
+    const today = todayLocal();
+    setCal(d ? { sel: d, view: d.slice(0, 7) } : { sel: view === today.slice(0, 7) ? today : view + '-01', view });
+    go('calendar');
+  };
+  const catName = d => { const c = meta.cats.find(x => x.id === sorter.catOf(d)); return c ? catLabel(c, t) : ''; };
   const cur = days.find(d => d.id === open);
-  const NAV = [['map', 'nav.map'], ['new', 'nav.new'], ['about', 'nav.about']];
+  const NAV = [['map', 'nav.map'], ['calendar', 'nav.calendar'], ['new', 'nav.new'], ['about', 'nav.about']];
   const navItems = NAV.map(([k, l]) => ({ key: k, label: t(l), on: tab === k && !cur, go: () => go(k) }));
-  const menu = html`<${Menu} lang=${lang} setLang=${setLang} theme=${theme} setTheme=${setTheme} palette=${palette} setPalette=${setPalette} user=${user} onLogout=${logout} nav=${user ? navItems : null}/>`;
+  /* на телефоне основные разделы — в нижней панели, в меню «≡» остаётся только «Как это устроено» */
+  const menu = html`<${Menu} lang=${lang} setLang=${setLang} theme=${theme} setTheme=${setTheme} palette=${palette} setPalette=${setPalette} user=${user} onLogout=${logout} nav=${user ? navItems.slice(3) : null}/>`;
+  const TABS = [['map', 'map'], ['calendar', 'calendar'], ['new', 'plus']];
 
   let body;
   if (!sb) {
@@ -153,16 +165,18 @@ export function App() {
       const w = sorter(cur), c = meta.cats.find(x => x.id === w.cat);
       content = html`<${Folder} key=${cur.id} d=${cur} where=${{ ...w, name: c ? catLabel(c, t) : '' }} onBack=${() => setOpen(null)} onSave=${saveDay} onDelete=${del}/>`;
     }
-    else if (tab === 'new') content = html`<${DayForm} onSave=${d => { saveDay(d); setTab('map'); setOpen(d.id); }}/>`;
+    else if (tab === 'new') content = html`<${DayForm} key=${date0 || 'new'} date0=${date0} onSave=${d => { saveDay(d); setDate0(null); setTab('map'); setOpen(d.id); }}/>`;
+    else if (tab === 'calendar') content = html`<${Calendar} days=${days} state=${cal} setState=${setCal} onOpen=${setOpen} onNew=${newOn} where=${catName}/>`;
     else if (tab === 'map' && catView) content = html`<${CategoryView} catId=${catView} days=${days} cats=${meta.cats} layout=${meta.layout} sorter=${sorter} highlight=${hiDay} onBack=${leaveCat} onOpen=${setOpen} onMove=${moveDay}/>`;
     else if (tab === 'map') content = html`<${MemoryMap} days=${days} cats=${meta.cats} layout=${meta.layout} sorter=${sorter} focus=${focus} onFocusDone=${focusDone} onOpen=${setOpen} onMeta=${saveMeta} onSort=${sort} onSeed=${demo} onEnterCat=${enterCat}/>`;
     else content = html`<${About}/>`;
     body = html`<div class="shell">
       <aside class="side">
         <${Brand} t=${t}/>
-        <nav class="nav nav-primary" aria-label=${t('nav.main')}>${navItems.slice(0, 2).map(navBtn)}</nav>
+        <nav class="nav nav-primary" aria-label=${t('nav.main')}>${navItems.slice(0, 3).map(navBtn)}</nav>
+        ${loaded && tab !== 'calendar' && html`<${MiniCalendar} days=${days} onPick=${toCal}/>`}
         <${SidePanel} days=${days} onOpen=${setOpen} idPrefix="sp"/>
-        <nav class="nav nav-secondary" aria-label=${t('nav.about')}>${navBtn(navItems[2])}<button class="nav-btn" onClick=${logout} title=${user.email}>${t('nav.logout')}</button></nav>
+        <nav class="nav nav-secondary" aria-label=${t('nav.about')}>${navBtn(navItems[3])}<button class="nav-btn" onClick=${logout} title=${user.email}>${t('nav.logout')}</button></nav>
       </aside>
       <div class="main-col">
         <header class="topbar"><div class="topbar-brand"><${Brand} t=${t} as="p"/></div>
@@ -173,6 +187,8 @@ export function App() {
         </main>
         ${tab === 'map' && !cur && !catView && html`<div class="side-mobile"><${SidePanel} days=${days} onOpen=${setOpen} idPrefix="spm"/></div>`}
       </div>
+      <nav class="tabbar" aria-label=${t('nav.main')}>${TABS.map(([k, ic]) => html`<button key=${k} type="button" class=${'tab' + (k === 'new' ? ' tab-new' : '') + (tab === k && !cur ? ' on' : '')}
+          aria-current=${tab === k && !cur ? 'page' : undefined} onClick=${() => go(k)}><${Icon} name=${ic} size=${22}/><span>${t('nav.' + k)}</span></button>`)}</nav>
     </div>`;
   }
   return html`<${I18n.Provider} value=${t}><a class="skip" href="#main">${t('skip')}</a>${body}<//>`;

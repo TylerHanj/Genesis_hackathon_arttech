@@ -30,11 +30,11 @@ export function parseStart(s) {
 }
 const fmtStart = n => (n ? `${Math.floor(n / 60)}:${String(n % 60).padStart(2, '0')}` : '');
 
-export function DayForm({ init, onSave, onCancel }) {
+export function DayForm({ init, date0, onSave, onCancel }) {   // date0 — дата из календаря («Записать этот день»)
   const t = useT();
   const s0 = init ? init.song : {};
   const [f, setF] = useState({
-    date: init ? init.date : todayLocal(), text: init ? init.text : '',
+    date: init ? init.date : (date0 || todayLocal()), text: init ? init.text : '',
     link: s0.link || '', artist: s0.artist || '', year: s0.year || '', start: fmtStart(s0.start || 0),
     songTitle: s0.title || '', genre: s0.genre || '', cover: s0.cover || '',
     title: init && init.manualTitle ? init.title : '',

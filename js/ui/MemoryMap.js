@@ -11,6 +11,7 @@ import { html, useState, useEffect, useRef, useMemo } from '../lib/react.js';
 import { clamp, hash } from '../lib/util.js';
 import { useT, allValues } from '../i18n/index.js';
 import { Scene } from './Scene.js';
+import { Icon } from './Icons.js';
 import { packCircle, looseSpot, byNewest, PREVIEW_MAX } from '../core/layout.js';
 import { makeSorter, manualCat } from '../core/sorter.js';
 
@@ -143,6 +144,7 @@ export function MemoryMap({ days, cats, layout, sorter, focus, onFocusDone, onOp
 
   /* перетаскивание карточки или круга */
   const begin = (e, type, id) => {
+    if (e.pointerType === 'touch') return;              // палец: см. onDown — перенос только после удержания
     if (e.button !== undefined && e.button !== 0) return;
     e.stopPropagation(); e.preventDefault();
     const sx = e.clientX, sy = e.clientY, k = vRef.current.k; let moved = false;
@@ -169,6 +171,13 @@ export function MemoryMap({ days, cats, layout, sorter, focus, onFocusDone, onOp
       gest.current = { type: 'pinch', d0: Math.hypot(a.x - b.x, a.y - b.y) || 1, wx: (mid.x - o.x) / o.k, wy: (mid.y - o.y) / o.k, k0: o.k };
     } else gest.current = null;
   };
+  /* Палец на телефоне: касание карточки не хватает её сразу.
+     - палец поехал — двигается карта (как по пустому месту);
+     - второй палец — масштаб двумя пальцами (раньше карточка «перехватывала» первый палец и масштаб не работал);
+     - короткое касание — открыть воспоминание;
+     - удержание ~0,4 с — карточка (или круг за подпись) «приподнимается» и переносится пальцем. */
+  const lp = useRef(null);
+  const cancelLp = () => { const st = lp.current; if (!st) return; clearTimeout(st.timer); if (st.active) setDrag(null); lp.current = null; };
   const onDown = e => {
     if (e.target.closest('input,button,select,textarea,a')) return;
     if (e.button !== undefined && e.button !== 0) return;
@@ -176,10 +185,29 @@ export function MemoryMap({ days, cats, layout, sorter, focus, onFocusDone, onOp
     e.preventDefault();                                                  // не начинать выделение текста
     try { box.current.setPointerCapture(e.pointerId); } catch (x) {}
     const first = ptrs.current.size === 0;
+    if (!first) cancelLp();                                              // второй палец — это масштаб, не перенос
     ptrs.current.set(e.pointerId, local(e)); startGesture(first ? e.target : null);
+    if (first && e.pointerType === 'touch') {
+      const card = e.target.closest('.mc'), lab = !card && e.target.closest('.clab'), circ = lab && lab.closest('.circ');
+      if (card || circ) {
+        const st = { type: card ? 'card' : 'cat', id: card ? card.dataset.id : circ.dataset.id, pid: e.pointerId, sx: e.clientX, sy: e.clientY, active: false };
+        st.timer = setTimeout(() => {
+          if (lp.current !== st || ptrs.current.size !== 1) return;
+          st.active = true; gest.current = null;
+          if (navigator.vibrate) { try { navigator.vibrate(12); } catch (x) {} }
+          setDrag({ type: st.type, id: st.id, dx: 0, dy: 0 });
+        }, 420);
+        lp.current = st;
+      }
+    }
   };
   const onMove = e => {
     if (!ptrs.current.has(e.pointerId)) return;
+    const st = lp.current;
+    if (st && st.pid === e.pointerId) {
+      if (st.active) { const k = vRef.current.k; setDrag({ type: st.type, id: st.id, dx: (e.clientX - st.sx) / k, dy: (e.clientY - st.sy) / k }); ptrs.current.set(e.pointerId, local(e)); return; }
+      if (Math.hypot(e.clientX - st.sx, e.clientY - st.sy) > 8) cancelLp();   // палец поехал до удержания — двигаем карту
+    }
     ptrs.current.set(e.pointerId, local(e));
     const g = gest.current; if (!g) return;
     const pts = [...ptrs.current.values()];
@@ -194,6 +222,18 @@ export function MemoryMap({ days, cats, layout, sorter, focus, onFocusDone, onOp
   };
   const onUp = e => {
     if (!ptrs.current.delete(e.pointerId)) return;
+    const st = lp.current;
+    if (st && st.pid === e.pointerId) {
+      clearTimeout(st.timer); lp.current = null;
+      if (st.active) {                                                   // перенос пальцем закончен
+        const k = vRef.current.k, ax = (e.clientX - st.sx) / k, ay = (e.clientY - st.sy) / k;
+        setDrag(null);
+        if (e.type === 'pointerup') finish(st.type, st.id, ax, ay);
+        startGesture(null); return;
+      }
+      const g0 = gest.current;
+      if (st.type === 'card' && e.type === 'pointerup' && !ptrs.current.size && (!g0 || !g0.moved)) { gest.current = null; onOpen(st.id); return; }
+    }
     const g = gest.current;
     if (g && g.type === 'pan' && !g.moved && !ptrs.current.size && e.type === 'pointerup' && g.target && g.target.closest) {
       const circ = g.target.closest('.circ');                            // клик по пустому месту круга → войти в категорию
@@ -260,7 +300,7 @@ export function MemoryMap({ days, cats, layout, sorter, focus, onFocusDone, onOp
   const cardKey = (e, id) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpen(id); } };
 
   return html`<div class="map" ref=${box} role="region" aria-label=${t('map.label')}
-      onPointerDown=${onDown} onPointerMove=${onMove} onPointerUp=${onUp} onPointerCancel=${onUp}
+      onPointerDown=${onDown} onPointerMove=${onMove} onPointerUp=${onUp} onPointerCancel=${onUp} onContextMenu=${e => { if (lp.current) e.preventDefault(); }}
       style=${{ backgroundPosition: `${v.x}px ${v.y}px`, backgroundSize: `${28 * v.k}px ${28 * v.k}px` }}>
     <div class="world" style=${{ transform: `translate(${v.x}px,${v.y}px) scale(${v.k})` }}>
       ${cs.map(c => { const ex = plan.extra[c.id]; return html`<div key=${c.id} class=${'circ' + (hi && hi.cat === c.id ? ' hi' : '')} data-id=${c.id} title=${t('map.circTitle')} style=${{ left: c.x - c.r, top: c.y - c.r, width: c.r * 2, height: c.r * 2, '--cc': c.color }}>
@@ -289,14 +329,15 @@ export function MemoryMap({ days, cats, layout, sorter, focus, onFocusDone, onOp
       ${add
         ? html`<input type="text" autoFocus=${true} maxLength="60" aria-label=${t('map.catName')} placeholder=${t('map.catName')} value=${name} onChange=${e => setName(e.target.value)} onKeyDown=${e => { if (e.key === 'Enter') addCat(); if (e.key === 'Escape') setAdd(false); }}/>
                <button class="btn pri" onClick=${addCat}>${t('map.create')}</button><button class="btn" onClick=${() => setAdd(false)}>${t('cancel')}</button>`
-        : html`<button class="btn pri" onClick=${() => setAdd(true)}>${t('map.addCat')}</button>
-               <button class="btn" onClick=${onSort} title=${t('map.sortTitle')}>${t('map.sort')}</button>`}
-      <button class="btn sq" aria-label=${t('map.zoomIn')} title=${t('map.zoomIn')} onClick=${() => zoomC(1.25)}>+</button>
-      <button class="btn sq" aria-label=${t('map.zoomOut')} title=${t('map.zoomOut')} onClick=${() => zoomC(.8)}>−</button>
-      <button class="btn sq" aria-label=${t('map.fit')} title=${t('map.fit')} onClick=${() => setV(fitView())}>⤢</button>
+        : html`<button class="btn pri ico" onClick=${() => setAdd(true)} aria-label=${t('map.addCat')}><${Icon} name="circlePlus" size=${18}/><span class="lbl">${t('map.addCat')}</span></button>
+               <button class="btn ico" onClick=${onSort} title=${t('map.sortTitle')} aria-label=${t('map.sort')}><${Icon} name="sort" size=${18}/><span class="lbl">${t('map.sort')}</span></button>`}
+      <button class="btn sq" aria-label=${t('map.zoomIn')} title=${t('map.zoomIn')} onClick=${() => zoomC(1.25)}><${Icon} name="plus" size=${18}/></button>
+      <button class="btn sq" aria-label=${t('map.zoomOut')} title=${t('map.zoomOut')} onClick=${() => zoomC(.8)}><${Icon} name="minus" size=${18}/></button>
+      <button class="btn sq" aria-label=${t('map.fit')} title=${t('map.fit')} onClick=${() => setV(fitView())}><${Icon} name="fit" size=${18}/></button>
     </div>
     ${add && html`<p class="mtool-hint" onPointerDown=${stop}>${t('map.addHint')}</p>`}
     ${!days.length && html`<div class="mempty"><div onPointerDown=${stop}><p>${t('map.empty')}</p><button class="btn" onClick=${onSeed}>${t('map.demo')}</button></div></div>`}
     <div class="mhint">${t('map.hint')}</div>
+    <div class="mhint-touch" aria-hidden="true">${t('map.touchHint')}</div>
   </div>`;
 }

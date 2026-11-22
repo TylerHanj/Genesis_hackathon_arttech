@@ -79,7 +79,7 @@ export function PhotoPicker({ items, setItems, onError }) {
         onChange=${e => { add([...e.target.files]); e.target.value = ''; }}/>
       <span class="dz-icon" aria-hidden="true">＋</span>
       <span class="dz-text"><b>${full ? t('photos.full') : t('photos.drop')}</b>
-        <small>${t('photos.paste')}</small><small>${t('photos.limitHint', { n: LIMITS.photos, mb: LIMITS.photoMB })}</small></span>
+        <small class="dz-paste">${t('photos.paste')}</small><small>${t('photos.limitHint', { n: LIMITS.photos, mb: LIMITS.photoMB })}</small></span>
     </label>
   </div>`;
 }
