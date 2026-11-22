@@ -58,9 +58,9 @@ export function DayForm({ init, onSave, onCancel }) {
   const fromMood = mood ? moodToMusicParams(mood.valence, mood.energy) : null, prof = genreProfile(f.genre);
   const moodMode = fromMood ? fromMood.mode : (s0.mode || DEFAULT_SONG.mode);
   let base, src;
-  if (an && an.bpm) { base = { bpm: an.bpm, mode: an.mode, energy: an.energy }; src = 'audio'; }
+  if (an && an.bpm) { base = { bpm: an.bpm, mode: an.mu ? moodMode : an.mode, energy: an.energy }; src = 'audio'; }   // лад неясен — по настроению
   else if (linkAn && linkAn.bpm) {                                  // фрагмент: свой лад; только Deezer: лад по настроению
-    base = { bpm: linkAn.bpm, mode: linkAn.src === 'preview' ? linkAn.mode : moodMode, energy: linkAn.energy != null ? linkAn.energy : (prof ? prof.energy : DEFAULT_SONG.energy) };
+    base = { bpm: linkAn.bpm, mode: linkAn.src === 'preview' && !linkAn.mu ? linkAn.mode : moodMode, energy: linkAn.energy != null ? linkAn.energy : (prof ? prof.energy : DEFAULT_SONG.energy) };
     src = linkAn.src;
   }
   else if (prof) { base = { bpm: prof.bpm, energy: prof.energy, mode: fromMood ? fromMood.mode : (s0.mode || DEFAULT_SONG.mode) }; src = 'meta'; }
@@ -70,6 +70,7 @@ export function DayForm({ init, onSave, onCancel }) {
   const energyNote = manualEnergy != null ? t('adv.manual') : src === 'audio' ? t('form.measured') : src === 'preview' ? t('adv.fromPreview') : src === 'db' ? t('adv.fromDeezer')
     : src === 'meta' ? t('adv.fromGenre') : src === 'mood' ? t('adv.auto') : '';
   const era = eraOf(f.year);
+  const muHow = t(mood ? 'audio.muMood' : 'audio.muDefault', { mode: base.mode === 'minor' ? t('form.minor') : t('form.major') });   // лад по звуку неясен — откуда он взят
 
   async function pickAudio(e) {
     const a = e.target.files[0]; setErr(''); e.target.value = '';
@@ -128,9 +129,10 @@ export function DayForm({ init, onSave, onCancel }) {
       const photos = [];
       for (const x of items) photos.push(x.kind === 'keep' ? x.p : await prepImage(x.file));
       const fileUrl = audio ? URL.createObjectURL(audio) : (s0.fileUrl || null);
-      const songAn = src === 'audio' ? { ...an, src: 'audio' }
-        : src === 'preview' || src === 'db' ? { bpm: base.bpm, mode: base.mode, energy: base.energy, src, ...(linkAn.key ? { key: linkAn.key } : {}),
-          ...(linkAn.bright != null ? { bright: linkAn.bright } : {}), ...(linkAn.conf != null ? { conf: linkAn.conf } : {}), ...(linkAn.dz ? { dz: true } : {}) }
+      const { key: anKey, mu: anMu, ...anRest } = an || {};
+      const songAn = src === 'audio' ? { ...anRest, mode: base.mode, src: 'audio', ...(anMu ? { mu: true } : anKey ? { key: anKey } : {}) }
+        : src === 'preview' || src === 'db' ? { bpm: base.bpm, mode: base.mode, energy: base.energy, src, ...(linkAn.key && !linkAn.mu ? { key: linkAn.key } : {}),
+          ...(linkAn.bright != null ? { bright: linkAn.bright } : {}), ...(linkAn.conf != null ? { conf: linkAn.conf } : {}), ...(linkAn.dz ? { dz: true } : {}), ...(linkAn.mu ? { mu: true } : {}) }
         : src === 'meta' ? { bpm: base.bpm, mode: base.mode, energy: base.energy, src: 'meta' } : null;
       const day = makeDay({
         id: init && init.id, date: f.date, text: f.text.slice(0, 20000), photos, mood, ctx, customTitle: f.title.trim().slice(0, 140), newId: uid,
@@ -169,7 +171,8 @@ export function DayForm({ init, onSave, onCancel }) {
           ${metaState === 'accepted' && f.songTitle && html`<p class="hint">♪ ${[f.songTitle, f.artist, f.year, f.genre].filter(Boolean).join(' · ')}</p>`}
           ${linkBusy && html`<p class="hint" role="status">${t('audio.analyzingLink')}</p>`}
           ${!linkBusy && !(an && an.bpm) && linkAn && linkAn.bpm > 0 && html`<p class="audio-an" role="status">${linkAn.src === 'preview'
-            ? t('audio.resultLink', { bpm: linkAn.bpm, mode: linkAn.mode === 'minor' ? t('form.minor') : t('form.major'), key: linkAn.key || '', e: Math.round(base.energy * 100) }) + (linkAn.dz ? t('audio.dz') : '')
+            ? (linkAn.mu ? t('audio.resultLinkMu', { bpm: linkAn.bpm, how: muHow, e: Math.round(base.energy * 100) })
+              : t('audio.resultLink', { bpm: linkAn.bpm, mode: linkAn.mode === 'minor' ? t('form.minor') : t('form.major'), key: linkAn.key || '', e: Math.round(base.energy * 100) })) + (linkAn.dz ? t('audio.dz') : '')
             : t('audio.resultDb', { bpm: linkAn.bpm, e: Math.round(base.energy * 100) })}</p>`}
           <div class="audio-pick">
             <label class="btn ghost file-btn">${t('audio.choose')}
@@ -179,7 +182,9 @@ export function DayForm({ init, onSave, onCancel }) {
               : html`<span class="hint">${s0.fileName ? '♪ ' + s0.fileName + ' · ' : ''}${t('form.songFileHint')}</span>`}
           </div>
           ${listening && html`<p class="hint" role="status">${t('audio.analyzing')}</p>`}
-          ${an && an.bpm > 0 && html`<p class="audio-an" role="status">${t('audio.result', { bpm: an.bpm, mode: an.mode === 'minor' ? t('form.minor') : t('form.major'), key: an.key || '', e: Math.round(an.energy * 100) })}</p>`}
+          ${an && an.bpm > 0 && html`<p class="audio-an" role="status">${an.mu
+            ? t('audio.resultMu', { bpm: an.bpm, how: muHow, e: Math.round(an.energy * 100) })
+            : t('audio.result', { bpm: an.bpm, mode: an.mode === 'minor' ? t('form.minor') : t('form.major'), key: an.key || '', e: Math.round(an.energy * 100) })}</p>`}
         </div>
         <${ContextBlock} value=${ctx} onChange=${setCtx} date=${f.date} setDate=${d => set('date', d)} files=${files}/>
         <details class="advanced">

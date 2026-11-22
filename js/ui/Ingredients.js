@@ -79,8 +79,8 @@ export function Ingredients({ d }) {
             <span class="src">${[s.title && s.artist, s.year, s.genre, srcKey && t(srcKey), an && an.dz && an.src === 'preview' && t('ing.dz')].filter(Boolean).join(' · ')}</span></span>
         </div>
         <div class="chips2">
-          <${Chip} on=${true}>${A.sg.bpm} BPM<//>
-          <${Chip} on=${true}>${A.maj ? t('form.major') : t('form.minor')}${an && an.key ? ' (' + an.key + ')' : ''}<//>
+          <${Chip} on=${true}>${!an || an.src === 'meta' ? '≈' : ''}${A.sg.bpm} BPM<//>
+          <${Chip} on=${true}>${A.maj ? t('form.major') : t('form.minor')}${an && an.key && !an.mu ? ' (' + an.key + ')' : ''}${(an && an.mu) || (!an && d.mood) ? ' — ' + t('ing.modeByMood') : ''}<//>
           <${Chip} on=${true}>${t('ing.energy', { n: Math.round(A.sg.energy * 100) })}<//>
           ${an && (an.src === 'audio' || an.src === 'preview') && html`<${Chip}>${an.bright > .5 ? t('ing.brightSound') : t('ing.darkSound')}<//>`}
           ${era && html`<${Chip}>${t('ing.era', { era: t('era.' + era) })}<//>`}

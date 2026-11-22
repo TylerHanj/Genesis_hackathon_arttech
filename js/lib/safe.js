@@ -53,7 +53,7 @@ export function sanitizeDay(raw) {
   if (sg.an && typeof sg.an === 'object') {     // анализ: audio — свой файл, preview — фрагмент песни по ссылке, db — темп из Deezer, meta — по жанру
     song.an = { bpm: Math.round(num(sg.an.bpm, 40, 220, 118)), mode: sg.an.mode === 'minor' ? 'minor' : 'major', energy: num(sg.an.energy, 0, 1, .5),
       bright: num(sg.an.bright, 0, 1, .5), conf: num(sg.an.conf, 0, 1, 0), src: AN_SRC.includes(sg.an.src) ? sg.an.src : 'audio',
-      ...(KEYS.includes(sg.an.key) ? { key: sg.an.key } : {}), ...(sg.an.dz === true ? { dz: true } : {}) };
+      ...(KEYS.includes(sg.an.key) && sg.an.mu !== true ? { key: sg.an.key } : {}), ...(sg.an.dz === true ? { dz: true } : {}), ...(sg.an.mu === true ? { mu: true } : {}) };
   }
   const v = st.voice && typeof st.voice === 'object' ? st.voice : {};
   const style = {
