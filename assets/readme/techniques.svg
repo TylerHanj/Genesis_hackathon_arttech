@@ -1,0 +1,102 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="500" viewBox="0 0 1280 500" role="img" aria-label="Пять художественных приёмов: Клод Моне, Кандинский, японский минимализм, коллаж, плёнка">
+  <title>Пять художественных приёмов «Ленты дней»</title>
+  <defs>
+    <filter id="soft" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="8"/></filter>
+    <filter id="drop" x="-30%" y="-20%" width="160%" height="150%"><feDropShadow dx="0" dy="8" stdDeviation="9" flood-color="#000" flood-opacity=".45"/></filter>
+    <filter id="grain" x="0" y="0" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency=".9" numOctaves="2" seed="4"/><feColorMatrix values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 .55 0"/><feComposite in2="SourceGraphic" operator="in"/></filter>
+    <clipPath id="frame"><rect width="150" height="266" rx="12"/></clipPath>
+    <linearGradient id="mon" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F3D89C"/><stop offset="1" stop-color="#D69A6C"/></linearGradient>
+    <linearGradient id="monFade" x1="0" y1="0" x2="0" y2="1"><stop offset=".55" stop-color="#F6ECD9" stop-opacity="0"/><stop offset=".86" stop-color="#F6ECD9" stop-opacity=".95"/></linearGradient>
+    <linearGradient id="duo" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3B4660"/><stop offset="1" stop-color="#C0CC82"/></linearGradient>
+    <linearGradient id="film" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#D9B48A"/><stop offset="1" stop-color="#6B5446"/></linearGradient>
+    <radialGradient id="vign" cx="50%" cy="50%" r="70%"><stop offset=".55" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".6"/></radialGradient>
+    <linearGradient id="p1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F6C27A"/><stop offset="1" stop-color="#E7766A"/></linearGradient>
+    <linearGradient id="p2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9AD3EC"/><stop offset="1" stop-color="#5B86B8"/></linearGradient>
+    <linearGradient id="p3" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#D8E38F"/><stop offset="1" stop-color="#8FA35A"/></linearGradient>
+  </defs>
+  <rect width="1280" height="500" rx="28" fill="#2F2A2E"/>
+
+  <g font-family="'Segoe UI', Helvetica, Arial, sans-serif">
+  <!-- 1. Моне -->
+  <g transform="translate(14 14)">
+    <rect width="236" height="472" rx="20" fill="#453F43" stroke="#75737E" stroke-opacity=".6"/>
+    <g transform="translate(43 24)" filter="url(#drop)"><g clip-path="url(#frame)">
+      <rect width="150" height="266" fill="url(#mon)"/>
+      <g filter="url(#soft)"><circle cx="40" cy="60" r="34" fill="#FFF6D8" fill-opacity=".75"/><circle cx="112" cy="98" r="40" fill="#F7C873" fill-opacity=".7"/><circle cx="56" cy="150" r="36" fill="#E9A27E" fill-opacity=".6"/><circle cx="118" cy="178" r="30" fill="#BFD0E6" fill-opacity=".55"/></g>
+      <rect width="150" height="266" fill="url(#monFade)"/>
+      <rect x="14" y="232" width="92" height="7" rx="3.5" fill="#3A2A20" fill-opacity=".6"/><rect x="14" y="246" width="70" height="4" rx="2" fill="#3A2A20" fill-opacity=".3"/>
+    </g></g>
+    <text x="118" y="326" text-anchor="middle" font-family="Georgia, serif" font-size="21" fill="#D7D8DF">Клод Моне</text>
+    <text x="118" y="350" text-anchor="middle" font-size="14" fill="#A7A9B8">мазки и свет</text>
+    <rect x="38" y="370" width="160" height="30" rx="15" fill="#C0CC82"/><text x="118" y="390" text-anchor="middle" font-size="14" font-weight="600" fill="#2F2A2E">спокойная радость</text>
+    <text x="118" y="428" text-anchor="middle" font-size="13" fill="#A7A9B8">тихо, тепло,</text><text x="118" y="446" text-anchor="middle" font-size="13" fill="#A7A9B8">мягкий свет</text>
+  </g>
+  <!-- 2. Кандинский -->
+  <g transform="translate(270 14)">
+    <rect width="236" height="472" rx="20" fill="#453F43" stroke="#75737E" stroke-opacity=".6"/>
+    <g transform="translate(43 24)" filter="url(#drop)"><g clip-path="url(#frame)">
+      <rect width="150" height="266" fill="#221E22"/>
+      <rect x="18" y="34" width="114" height="150" fill="url(#duo)" fill-opacity=".55"/>
+      <g stroke-linecap="round"><line x1="-10" y1="210" x2="170" y2="40" stroke="#A7A9B8" stroke-width="2"/><line x1="10" y1="20" x2="150" y2="230" stroke="#C0CC82" stroke-width="1.5"/><line x1="0" y1="120" x2="160" y2="104" stroke="#D9785B" stroke-width="3"/></g>
+      <circle cx="102" cy="74" r="26" fill="#C0CC82"/><circle cx="44" cy="150" r="18" fill="none" stroke="#D9785B" stroke-width="4"/>
+      <polygon points="88,150 130,210 52,206" fill="#D9785B" fill-opacity=".85"/><circle cx="30" cy="60" r="6" fill="#A7A9B8"/>
+      <rect x="14" y="232" width="92" height="7" rx="3.5" fill="#E8E6EC" fill-opacity=".75"/><rect x="14" y="246" width="70" height="4" rx="2" fill="#E8E6EC" fill-opacity=".35"/>
+    </g></g>
+    <text x="118" y="326" text-anchor="middle" font-family="Georgia, serif" font-size="21" fill="#D7D8DF">Кандинский</text>
+    <text x="118" y="350" text-anchor="middle" font-size="14" fill="#A7A9B8">геометрия напряжения</text>
+    <rect x="28" y="370" width="180" height="30" rx="15" fill="#C0CC82"/><text x="118" y="390" text-anchor="middle" font-size="14" font-weight="600" fill="#2F2A2E">тревога, напряжение</text>
+    <text x="118" y="428" text-anchor="middle" font-size="13" fill="#A7A9B8">дедлайны, стресс,</text><text x="118" y="446" text-anchor="middle" font-size="13" fill="#A7A9B8">много энергии</text>
+  </g>
+  <!-- 3. Минимализм -->
+  <g transform="translate(526 14)">
+    <rect width="236" height="472" rx="20" fill="#453F43" stroke="#75737E" stroke-opacity=".6"/>
+    <g transform="translate(43 24)" filter="url(#drop)"><g clip-path="url(#frame)">
+      <rect width="150" height="266" fill="#ECEDF0"/>
+      <rect x="44" y="64" width="62" height="80" fill="#FFFFFF"/><rect x="48" y="68" width="54" height="72" fill="#8D93A6"/>
+      <circle cx="108" cy="176" r="11" fill="#B86A5C"/>
+      <rect x="14" y="232" width="92" height="7" rx="3.5" fill="#2F2A2E" fill-opacity=".55"/><rect x="14" y="246" width="70" height="4" rx="2" fill="#2F2A2E" fill-opacity=".25"/>
+    </g></g>
+    <text x="118" y="326" text-anchor="middle" font-family="Georgia, serif" font-size="21" fill="#D7D8DF">Японский минимализм</text>
+    <text x="118" y="350" text-anchor="middle" font-size="14" fill="#A7A9B8">ма — красота пустоты</text>
+    <rect x="38" y="370" width="160" height="30" rx="15" fill="#C0CC82"/><text x="118" y="390" text-anchor="middle" font-size="14" font-weight="600" fill="#2F2A2E">грусть и тишина</text>
+    <text x="118" y="428" text-anchor="middle" font-size="13" fill="#A7A9B8">мало энергии,</text><text x="118" y="446" text-anchor="middle" font-size="13" fill="#A7A9B8">тихий грустный день</text>
+  </g>
+  <!-- 4. Коллаж -->
+  <g transform="translate(782 14)">
+    <rect width="236" height="472" rx="20" fill="#453F43" stroke="#75737E" stroke-opacity=".6"/>
+    <g transform="translate(43 24)" filter="url(#drop)"><g clip-path="url(#frame)">
+      <rect width="150" height="266" fill="#EFE6D6"/>
+      <g transform="translate(16 30) rotate(-10)"><rect width="74" height="88" fill="#FFFFFF"/><rect x="5" y="5" width="64" height="62" fill="url(#p1)"/></g>
+      <g transform="translate(66 68) rotate(9)"><rect width="74" height="88" fill="#FFFFFF"/><rect x="5" y="5" width="64" height="62" fill="url(#p2)"/></g>
+      <g transform="translate(26 120) rotate(-3)"><rect width="74" height="88" fill="#FFFFFF"/><rect x="5" y="5" width="64" height="62" fill="url(#p3)"/></g>
+      <rect x="14" y="232" width="92" height="7" rx="3.5" fill="#3A2A20" fill-opacity=".6"/><rect x="14" y="246" width="70" height="4" rx="2" fill="#3A2A20" fill-opacity=".3"/>
+    </g></g>
+    <text x="118" y="326" text-anchor="middle" font-family="Georgia, serif" font-size="21" fill="#D7D8DF">Коллаж и поляроиды</text>
+    <text x="118" y="350" text-anchor="middle" font-size="14" fill="#A7A9B8">все кадры сразу</text>
+    <rect x="38" y="370" width="160" height="30" rx="15" fill="#C0CC82"/><text x="118" y="390" text-anchor="middle" font-size="14" font-weight="600" fill="#2F2A2E">восторг</text>
+    <text x="118" y="428" text-anchor="middle" font-size="13" fill="#A7A9B8">ярко, шумно,</text><text x="118" y="446" text-anchor="middle" font-size="13" fill="#A7A9B8">много радости</text>
+  </g>
+  <!-- 5. Плёнка -->
+  <g transform="translate(1038 14)">
+    <rect width="228" height="472" rx="20" fill="#453F43" stroke="#75737E" stroke-opacity=".6"/>
+    <g transform="translate(39 24)" filter="url(#drop)"><g clip-path="url(#frame)">
+      <rect width="150" height="266" fill="url(#film)"/>
+      <circle cx="96" cy="92" r="40" fill="#F3D9B0" fill-opacity=".35"/>
+      <rect width="150" height="266" fill="#FFFFFF" filter="url(#grain)" opacity=".28"/>
+      <rect width="150" height="266" fill="url(#vign)"/>
+      <g fill="#2B2422">
+        <rect x="0" y="0" width="14" height="266"/><rect x="136" y="0" width="14" height="266"/>
+      </g>
+      <g fill="#EDE3D2" fill-opacity=".85">
+        <rect x="4" y="12" width="6" height="9" rx="1.5"/><rect x="4" y="42" width="6" height="9" rx="1.5"/><rect x="4" y="72" width="6" height="9" rx="1.5"/><rect x="4" y="102" width="6" height="9" rx="1.5"/><rect x="4" y="132" width="6" height="9" rx="1.5"/><rect x="4" y="162" width="6" height="9" rx="1.5"/><rect x="4" y="192" width="6" height="9" rx="1.5"/><rect x="4" y="222" width="6" height="9" rx="1.5"/><rect x="4" y="252" width="6" height="9" rx="1.5"/>
+        <rect x="140" y="12" width="6" height="9" rx="1.5"/><rect x="140" y="42" width="6" height="9" rx="1.5"/><rect x="140" y="72" width="6" height="9" rx="1.5"/><rect x="140" y="102" width="6" height="9" rx="1.5"/><rect x="140" y="132" width="6" height="9" rx="1.5"/><rect x="140" y="162" width="6" height="9" rx="1.5"/><rect x="140" y="192" width="6" height="9" rx="1.5"/><rect x="140" y="222" width="6" height="9" rx="1.5"/><rect x="140" y="252" width="6" height="9" rx="1.5"/>
+      </g>
+      <rect x="24" y="232" width="82" height="7" rx="3.5" fill="#F6ECD9" fill-opacity=".8"/><rect x="24" y="246" width="60" height="4" rx="2" fill="#F6ECD9" fill-opacity=".4"/>
+    </g></g>
+    <text x="114" y="326" text-anchor="middle" font-family="Georgia, serif" font-size="21" fill="#D7D8DF">Плёнка</text>
+    <text x="114" y="350" text-anchor="middle" font-size="14" fill="#A7A9B8">зерно и виньетка</text>
+    <rect x="34" y="370" width="160" height="30" rx="15" fill="#C0CC82"/><text x="114" y="390" text-anchor="middle" font-size="14" font-weight="600" fill="#2F2A2E">ровный день</text>
+    <text x="114" y="428" text-anchor="middle" font-size="13" fill="#A7A9B8">без явного полюса —</text><text x="114" y="446" text-anchor="middle" font-size="13" fill="#A7A9B8">обычный день</text>
+  </g>
+  </g>
+</svg>

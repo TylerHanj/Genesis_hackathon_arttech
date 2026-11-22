@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="470" viewBox="0 0 1280 470" role="img" aria-label="Как текст, фото, песня и карта настроения превращаются в кадр дня">
+  <title>Как день превращается в картину</title>
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#C0CC82"/></marker>
+    <linearGradient id="mood" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#5E5D6B"/><stop offset="1" stop-color="#7C8253"/></linearGradient>
+    <radialGradient id="glow" cx="50%" cy="50%" r="60%"><stop offset="0" stop-color="#C0CC82" stop-opacity=".14"/><stop offset="1" stop-color="#C0CC82" stop-opacity="0"/></radialGradient>
+  </defs>
+  <rect width="1280" height="470" rx="28" fill="#2F2A2E"/>
+  <rect x="380" y="20" width="520" height="430" fill="url(#glow)"/>
+  <g font-family="'Segoe UI', Helvetica, Arial, sans-serif">
+
+  <!-- входы -->
+  <text x="40" y="40" font-size="13" letter-spacing="2" fill="#A7A9B8">ЧТО ВЫ ДАЁТЕ</text>
+  <g fill="#453F43" stroke="#75737E" stroke-opacity=".6">
+    <rect x="30" y="56" width="300" height="66" rx="14"/><rect x="30" y="134" width="300" height="66" rx="14"/><rect x="30" y="212" width="300" height="66" rx="14"/>
+    <rect x="30" y="290" width="300" height="66" rx="14"/><rect x="30" y="368" width="300" height="66" rx="14" stroke-dasharray="6 5"/>
+  </g>
+  <g font-size="18" font-weight="600" fill="#D7D8DF">
+    <text x="50" y="84">Текст</text><text x="50" y="162">Фото</text><text x="50" y="240">Песня</text><text x="50" y="318">Карта настроения</text><text x="50" y="396">Контекст (по согласию)</text>
+  </g>
+  <g font-size="13" fill="#A7A9B8">
+    <text x="50" y="106">слова настроения · места · люди · сезон</text>
+    <text x="50" y="184">главные цвета · свет · примерный сюжет</text>
+    <text x="50" y="262">темп · мажор/минор · энергия · год</text>
+    <text x="50" y="340">ваша точка: радость × энергия</text>
+    <text x="50" y="418">погода · город · время съёмки</text>
+  </g>
+
+  <!-- стрелки к центру -->
+  <g fill="none" stroke="#C0CC82" stroke-opacity=".75" stroke-width="2" marker-end="url(#arr)">
+    <path d="M330 89 C 380 89, 380 200, 428 220"/><path d="M330 167 C 375 167, 380 220, 428 230"/><path d="M330 245 C 375 245, 380 245, 428 240"/>
+    <path d="M330 323 C 375 323, 380 262, 428 250"/><path d="M330 401 C 380 401, 385 280, 428 260"/>
+  </g>
+
+  <!-- центр -->
+  <rect x="432" y="56" width="416" height="378" rx="22" fill="#453F43" stroke="#C0CC82" stroke-opacity=".7" stroke-width="1.5"/>
+  <text x="640" y="92" text-anchor="middle" font-family="Georgia, serif" font-size="24" fill="#D7D8DF">Атмосфера дня</text>
+  <text x="640" y="116" text-anchor="middle" font-size="13" fill="#A7A9B8">две оси модели эмоций Рассела, каждая от 0 до 1</text>
+  <g transform="translate(550 136)">
+    <rect width="180" height="180" rx="16" fill="url(#mood)" stroke="#75737E"/>
+    <line x1="90" y1="10" x2="90" y2="170" stroke="#D7D8DF" stroke-opacity=".3"/><line x1="10" y1="90" x2="170" y2="90" stroke="#D7D8DF" stroke-opacity=".3"/>
+    <g font-size="11" fill="#D7D8DF" fill-opacity=".85"><text x="12" y="24">тревога</text><text x="168" y="24" text-anchor="end">восторг</text><text x="12" y="166">грусть</text><text x="168" y="166" text-anchor="end">покой и радость</text></g>
+    <circle cx="128" cy="62" r="11" fill="#C0CC82" stroke="#2F2A2E" stroke-width="3"/>
+  </g>
+  <g font-size="12" fill="#A7A9B8"><text x="640" y="333" text-anchor="middle">↑ энергия (arousal)   → радость (valence)</text></g>
+  <g font-size="12.5" fill="#D7D8DF" text-anchor="middle">
+    <text x="640" y="356">ваша точка на карте — половина веса,</text>
+    <text x="640" y="374">остальное — текст, фото и песня</text>
+    <text x="640" y="392">мажор — радостнее, минор — грустнее</text>
+    <text x="640" y="410">быстрый и громкий трек — больше энергии</text>
+    <text x="640" y="428">тёплые и светлые фото — радостнее</text>
+  </g>
+
+  <!-- стрелки к результатам -->
+  <g fill="none" stroke="#C0CC82" stroke-opacity=".75" stroke-width="2" marker-end="url(#arr)">
+    <path d="M848 230 C 890 230, 880 90, 928 82"/><path d="M848 236 C 890 236, 890 150, 928 146"/><path d="M848 242 C 890 242, 900 210, 928 210"/>
+    <path d="M848 248 C 890 248, 900 274, 928 274"/><path d="M848 254 C 890 254, 890 334, 928 338"/><path d="M848 260 C 890 260, 880 398, 928 402"/>
+  </g>
+
+  <!-- результаты -->
+  <text x="940" y="40" font-size="13" letter-spacing="2" fill="#A7A9B8">ЧТО ПОЛУЧАЕТСЯ</text>
+  <g fill="#453F43" stroke="#75737E" stroke-opacity=".6">
+    <rect x="932" y="56" width="318" height="52" rx="12"/><rect x="932" y="120" width="318" height="52" rx="12"/><rect x="932" y="184" width="318" height="52" rx="12"/>
+    <rect x="932" y="248" width="318" height="52" rx="12"/><rect x="932" y="312" width="318" height="52" rx="12"/><rect x="932" y="376" width="318" height="52" rx="12"/>
+  </g>
+  <g font-size="15" font-weight="600" fill="#D7D8DF">
+    <text x="950" y="80">Палитра из 4 цветов</text><text x="950" y="144">Приём: 1 из 5</text><text x="950" y="208">Ритм кадра</text>
+    <text x="950" y="272">Свет и зерно</text><text x="950" y="336">Эффекты эпохи и погоды</text><text x="950" y="400">Название, голос, круг</text>
+  </g>
+  <g font-size="12" fill="#A7A9B8">
+    <text x="950" y="98">оттенок фото + оттенок настроения</text><text x="950" y="162">Моне · Кандинский · ма · коллаж · плёнка</text>
+    <text x="950" y="226">смена фото 3–7,5 с, вращение фигур</text><text x="950" y="290">ночь и тревога — тёмный кадр</text>
+    <text x="950" y="354">год песни, дождь, снег, туман</text><text x="950" y="418">один из 8 кругов на карте</text>
+  </g>
+  </g>
+</svg>
