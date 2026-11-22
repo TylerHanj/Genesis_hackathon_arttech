@@ -42,6 +42,11 @@ export function CategoryView({ catId, days, cats, layout, onBack, onOpen, onMove
   const [q, setQ] = useState(''), [sort, setSort] = useState('date'), [status, setStatus] = useState('');
   const head = useRef(null);
   useEffect(() => { head.current && head.current.focus(); }, [catId]);
+  useEffect(() => {                                   // фон светится цветом круга
+    if (!cat) return undefined;
+    const root = document.documentElement; root.style.setProperty('--day-glow', cat.color);
+    return () => root.style.removeProperty('--day-glow');
+  }, [cat && cat.color]);
 
   const inCat = useMemo(() => days.filter(d => catOf(d, cats, layout) === catId), [days, cats, layout, catId]);
   const shown = useMemo(() => {

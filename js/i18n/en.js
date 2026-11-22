@@ -129,6 +129,10 @@ export default {
   'player.fileGone': 'Audio files are not kept between sessions yet. Upload it again via “Edit”.',
   'player.title': 'Song of the day',
 
+  'vol.label': 'Volume',
+  'vol.mute': 'Mute',
+  'vol.unmute': 'Unmute',
+  'vol.noControl': '{service} doesn’t let websites change its player’s volume — adjust it in the player or on your device.',
   'map.label': 'Memory map',
   'map.addCat': '+ Category',
   'map.catName': 'Category name',

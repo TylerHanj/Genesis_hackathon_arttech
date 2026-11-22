@@ -12,6 +12,16 @@ body {
   transition: background-color var(--t-mid) var(--ease), color var(--t-mid) var(--ease);
 }
 button, input, select, textarea { font: inherit; color: inherit; }
+
+/* Мягкое свечение фона: два статичных радиальных градиента на отдельном фиксированном слое.
+   Без анимации и без background-attachment: fixed — рисуется один раз, при прокрутке не перерисовывается.
+   В папке дня и на экране категории первый цвет — цвет дня / круга (--day-glow). */
+body::before {
+  content: ''; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+  background:
+    radial-gradient(55vmax 42vmax at 32% 18%, color-mix(in srgb, var(--day-glow, var(--glow-1)) var(--glow-k1), transparent), transparent 72%),
+    radial-gradient(55vmax 45vmax at 96% 96%, color-mix(in srgb, var(--glow-2) var(--glow-k2), transparent), transparent 72%);
+}
 h1, h2, h3 { font-family: var(--font-display); font-weight: 600; letter-spacing: -.005em; }
 h2 { font-size: 26px; line-height: 1.12; margin: 0 0 12px; }
 h3 { font-size: 21px; margin: 0 0 10px; }
@@ -241,6 +251,26 @@ main:focus { outline: none; }
 .menu-nav button { text-align: left; border: 0; background: none; padding: 9px 10px; border-radius: var(--radius-s); cursor: pointer; font-weight: 600; }
 .menu-nav button:hover { background: var(--tag-soft); }
 .menu-nav button.on { background: var(--tag); color: var(--on-tag); }
+
+/* ---------- громкость плеера ---------- */
+.vol { display: flex; align-items: center; gap: 10px; margin-top: 10px; padding: 6px 12px 6px 6px; border-radius: 999px;
+  background: color-mix(in srgb, var(--surface) 70%, transparent); border: 1px solid var(--border); }
+.vol-mute { flex: none; width: 34px; height: 34px; border-radius: 50%; border: 0; display: grid; place-items: center; cursor: pointer;
+  background: transparent; color: var(--text); transition: background-color var(--t-fast) var(--ease); }
+.vol-mute:hover, .vol-mute[aria-pressed="true"] { background: var(--tag-soft); }
+.vol-ico { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.vol-ico .spk { fill: currentColor; stroke-width: 1.2; }
+.vol-range { flex: 1; min-width: 60px; height: 22px; margin: 0; background: transparent; cursor: pointer; -webkit-appearance: none; appearance: none; accent-color: var(--primary); }
+.vol-range::-webkit-slider-runnable-track { height: 4px; border-radius: 4px; background: linear-gradient(to right, var(--primary) var(--p, 40%), var(--border-strong) var(--p, 40%)); }
+.vol-range::-moz-range-track { height: 4px; border-radius: 4px; background: var(--border-strong); }
+.vol-range::-moz-range-progress { height: 4px; border-radius: 4px; background: var(--primary); }
+.vol-range::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; margin-top: -6px; border-radius: 50%; background: var(--primary);
+  border: 2px solid var(--bg); box-shadow: var(--shadow); transition: transform var(--t-fast) var(--ease); }
+.vol-range::-moz-range-thumb { width: 14px; height: 14px; border-radius: 50%; background: var(--primary); border: 2px solid var(--bg); }
+.vol-range:hover::-webkit-slider-thumb, .vol-range:focus-visible::-webkit-slider-thumb { transform: scale(1.15); }
+.vol-range:focus-visible { outline: 2px solid var(--focus); outline-offset: 4px; border-radius: 999px; }
+.vol-val { flex: none; width: 3.2em; text-align: right; font-size: 12.5px; font-weight: 600; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.vol-note { margin: 8px 0 0; font-size: 12.5px; color: var(--text-muted); }
 
 /* ---------- папка дня ---------- */
 .folder > .btn { margin-bottom: 18px; }

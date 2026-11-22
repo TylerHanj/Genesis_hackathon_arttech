@@ -15,6 +15,10 @@ export function Folder({ d, onBack, onSave, onDelete }) {
   const [edit, setEdit] = useState(false), [ask, setAsk] = useState(false), [more, setMore] = useState(false);
   const voices = useVoices(textLang(d.text)), [vn, setVn] = useState(ls.get('dd-voice', ''));
   useEffect(() => stopSpeak, []);
+  useEffect(() => {                                   // фон мягко светится цветом дня (статичный градиент, см. app.css)
+    const root = document.documentElement; root.style.setProperty('--day-glow', st.sa);
+    return () => root.style.removeProperty('--day-glow');
+  }, [st.sa]);
   const sorted = [...voices].sort((a, b) => vScore(b) - vScore(a)), voice = sorted.find(v => v.name === vn) || sorted[0];
   if (edit) return html`<${DayForm} init=${d} onSave=${x => { onSave(x); setEdit(false); }} onCancel=${() => setEdit(false)}/>`;
   const mus = [s.artist, s.year].filter(Boolean).join(', ');

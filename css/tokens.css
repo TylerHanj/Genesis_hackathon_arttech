@@ -62,6 +62,8 @@
   --shadow:        0 1px 2px color-mix(in srgb, var(--shade) 10%, transparent), 0 10px 28px color-mix(in srgb, var(--shade) 10%, transparent);
   --shadow-lift:   0 14px 36px color-mix(in srgb, var(--shade) 22%, transparent);
   --dot:           color-mix(in srgb, var(--c-neutral) 55%, transparent);
+  --glow-1: var(--c-warm);    --glow-k1: 30%;
+  --glow-2: var(--c-neutral); --glow-k2: 22%;
 }
 
 /* ---------- Тёплая · тёмная: «кожа» становится фоном ---------- */
@@ -91,6 +93,8 @@
   --shadow:        0 1px 2px color-mix(in srgb, black 30%, transparent), 0 10px 28px color-mix(in srgb, black 30%, transparent);
   --shadow-lift:   0 14px 36px color-mix(in srgb, black 45%, transparent);
   --dot:           color-mix(in srgb, var(--c-neutral) 30%, transparent);
+  --glow-1: var(--c-warm);    --glow-k1: 24%;
+  --glow-2: var(--c-neutral); --glow-k2: 14%;
 }
 
 /* ---------- Олива · светлая: фон из серо-сиреневого, текст тёмно-серый, акцент салатовый ---------- */
@@ -119,6 +123,8 @@
   --shadow:        0 1px 2px color-mix(in srgb, var(--shade) 10%, transparent), 0 10px 28px color-mix(in srgb, var(--shade) 10%, transparent);
   --shadow-lift:   0 14px 36px color-mix(in srgb, var(--shade) 22%, transparent);
   --dot:           color-mix(in srgb, var(--o-plum) 45%, transparent);
+  --glow-1: var(--o-lime);    --glow-k1: 30%;
+  --glow-2: var(--o-lilac);   --glow-k2: 35%;
 }
 
 /* ---------- Олива · тёмная: фон тёмно-серый, карточки графитовые, кнопки салатовые ---------- */
@@ -147,4 +153,6 @@
   --shadow:        0 1px 2px color-mix(in srgb, black 35%, transparent), 0 10px 28px color-mix(in srgb, black 35%, transparent);
   --shadow-lift:   0 14px 36px color-mix(in srgb, black 50%, transparent);
   --dot:           color-mix(in srgb, var(--o-lilac) 22%, transparent);
+  --glow-1: var(--o-lime);    --glow-k1: 22%;
+  --glow-2: var(--o-plum);    --glow-k2: 34%;
 }
