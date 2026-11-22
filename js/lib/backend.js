@@ -17,7 +17,7 @@ export const sb = (window.supabase && CONFIG.SUPABASE_URL && CONFIG.SUPABASE_PUB
   : null;
 
 const META_ID = 'meta:cats';
-export const META_V = 2;        // 2 — восемь кругов по секторам карты настроения (см. upgradeCats); поле необязательное
+export const META_V = 3;        // 2–3 — восемь кругов по секторам карты настроения (см. upgradeCats); поле необязательное
 export const MIN_PASSWORD = 8;
 
 /* Остатки старого локального режима (пароли-хэши) больше не нужны — удаляем при старте. */

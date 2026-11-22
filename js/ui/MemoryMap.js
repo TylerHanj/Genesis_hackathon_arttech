@@ -22,25 +22,42 @@ const GRID = Object.fromEntries(DEF.map(([k, h, gx, gy]) => [k, { x: gx * GX, y:
 const newCat = (k, t, p) => ({ id: 'c-' + k, name: t('cat.' + k), x: p.x, y: p.y, r: 190, color: `hsl(${GRID[k].h} 45% 52%)` });
 export const defaultCats = t => DEF.map(([k]) => newCat(k, t, GRID[k]));
 
-/* Переход с 5 кругов на 8 (один раз, см. META_V в backend.js).
-   - добавляются недостающие «Светлые дни», «В движении», «Тяжёлые дни» — только если пользователь пользуется стандартными кругами;
-   - если 5 прежних кругов стоят там, где стояли изначально, они переставляются в сетку; иначе раскладка пользователя не трогается,
-     а новые круги ставятся в свободное место. Названия, цвета и записи не меняются. */
-const OLD = ['monet', 'kandinsky', 'minimal', 'collage', 'film'];
+/* Переход на 8 кругов (META_V в backend.js):
+   v1 → 3: добавляются «Светлые дни», «В движении», «Тяжёлые дни» — только если пользователь пользуется стандартными кругами;
+   v2 → 3: исправление первой версии перехода (новые круги вставали в ряд справа, если хоть один старый круг был чуть сдвинут).
+   - Если 5 прежних кругов стоят примерно там, где стояли изначально (каждый не дальше 200 от своего места —
+     случайный сдвиг при перетаскивании не считается), все стандартные круги встают в сетку 3×3 как на карте настроения.
+     Свои круги пользователя, если сетка на них наезжает, отодвигаются в ближайшее свободное место.
+   - Если круги заметно переставляли, раскладка пользователя не трогается, а новые круги ставятся в ближайшее
+     свободное место рядом со своим местом в сетке. Названия, цвета и записи не меняются; удалённый круг не возвращается. */
+const OLD = ['monet', 'kandinsky', 'minimal', 'collage', 'film'], NEW = ['joy', 'alert', 'gloom'];
 const oldPos = i => ({ x: Math.round(Math.cos(i * 1.2566 - 1.5708) * 380), y: Math.round(Math.sin(i * 1.2566 - 1.5708) * 380) });
-function freeSpot(cats, p) {
-  const free = q => cats.every(c => Math.hypot(c.x - q.x, c.y - q.y) >= c.r + 190 + 40);
-  if (free(p)) return p;
-  const right = Math.max(...cats.map(c => c.x + c.r)) + 40 + 190;
-  for (let row = 0; row < 30; row++) { const q = { x: Math.round(right), y: (row - 1) * GY }; if (free(q)) return q; }
-  return { x: Math.round(right + GX), y: 0 };
+const overlaps = (a, b) => Math.hypot(a.x - b.x, a.y - b.y) < a.r + b.r + 40;
+function freeSpot(cats, p, r = 190) {
+  const me = { ...p, r };
+  if (cats.every(c => !overlaps(c, me))) return { x: p.x, y: p.y };
+  for (let d = 120; d <= 4000; d += 120) {                                 // по спирали от желаемого места
+    for (let a = 0; a < 360; a += 30) {
+      const q = { x: Math.round(p.x + Math.cos(a * Math.PI / 180) * d), y: Math.round(p.y + Math.sin(a * Math.PI / 180) * d), r };
+      if (cats.every(c => !overlaps(c, q))) return { x: q.x, y: q.y };
+    }
+  }
+  return { x: p.x + 5000, y: p.y };
 }
-export function upgradeCats(cats, t) {
-  const has = id => cats.some(c => c.id === id);
+export function upgradeCats(cats, t, fromV = 1) {
+  const has = id => cats.some(c => c.id === id), std = c => /^c-/.test(c.id) && !!GRID[c.id.slice(2)];
   if (!OLD.some(k => has('c-' + k))) return cats;                                   // своя система кругов — не трогаем
-  const untouched = OLD.every((k, i) => { const c = cats.find(x => x.id === 'c-' + k); return !c || (c.x === oldPos(i).x && c.y === oldPos(i).y); });
-  const out = cats.map(c => { const k = c.id.slice(2); return untouched && OLD.includes(k) ? { ...c, x: GRID[k].x, y: GRID[k].y } : c; });
-  for (const k of ['joy', 'alert', 'gloom']) if (!has('c-' + k)) out.push(newCat(k, t, freeSpot(out, GRID[k])));
+  const nearRing = OLD.every((k, i) => { const c = cats.find(x => x.id === 'c-' + k); return !c || Math.hypot(c.x - oldPos(i).x, c.y - oldPos(i).y) <= 200; });
+  let out = cats.map(c => (nearRing && std(c) ? { ...c, x: GRID[c.id.slice(2)].x, y: GRID[c.id.slice(2)].y } : c));
+  if (fromV < 2) for (const k of NEW) if (!has('c-' + k)) out.push(newCat(k, t, nearRing ? GRID[k] : freeSpot(out, GRID[k])));
+  if (nearRing) {                                                                   // свои круги не должны лежать под сеткой
+    const placed = out.filter(std);
+    out = out.map(c => {
+      if (std(c) || placed.every(p => !overlaps(p, c))) { if (!std(c)) placed.push(c); return c; }
+      const q = freeSpot(placed, { x: c.x, y: c.y }, c.r), moved = { ...c, ...q };
+      placed.push(moved); return moved;
+    });
+  }
   return out;
 }
 /* Стандартные категории показываются на текущем языке, пока пользователь их не переименовал. */

@@ -69,7 +69,7 @@ export function App() {
     store.load(user.id).then(r => {
       if (!alive) return;
       setDays(r.days);
-      const cats = !r.cats ? defaultCats(t) : r.v < META_V ? upgradeCats(r.cats, t) : r.cats;
+      const cats = !r.cats ? defaultCats(t) : r.v < META_V ? upgradeCats(r.cats, t, r.v) : r.cats;
       setMeta({ cats, layout: r.layout });
       if (!r.cats || r.v < META_V) store.saveMeta(user.id, cats, r.layout).catch(fail);
       setTab(r.days.length ? 'map' : 'new'); setLoaded(true);
