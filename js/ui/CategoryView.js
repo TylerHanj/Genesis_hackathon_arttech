@@ -6,7 +6,8 @@
    ===================================================================== */
 import { html, useState, useEffect, useRef, useMemo } from '../lib/react.js';
 import { parseLocalDate } from '../lib/util.js';
-import { catOf, byNewest } from '../core/layout.js';
+import { byNewest } from '../core/layout.js';
+import { makeSorter } from '../core/sorter.js';
 import { quadrant, isMood, moodSector } from '../core/analysis.js';
 import { useT } from '../i18n/index.js';
 import { Scene } from './Scene.js';
@@ -36,7 +37,7 @@ function MoveMenu({ d, cats, current, onMove, t }) {
   </div>`;
 }
 
-export function CategoryView({ catId, days, cats, layout, onBack, onOpen, onMove }) {
+export function CategoryView({ catId, days, cats, layout, sorter, highlight, onBack, onOpen, onMove }) {
   const t = useT();
   const cat = cats.find(c => c.id === catId);
   const [q, setQ] = useState(''), [sort, setSort] = useState('date'), [status, setStatus] = useState('');
@@ -48,7 +49,21 @@ export function CategoryView({ catId, days, cats, layout, onBack, onOpen, onMove
     return () => root.style.removeProperty('--day-glow');
   }, [cat && cat.color]);
 
-  const inCat = useMemo(() => days.filter(d => catOf(d, cats, layout) === catId), [days, cats, layout, catId]);
+  const sort0 = useMemo(() => sorter || makeSorter(days, cats, layout), [sorter, days, cats, layout]);
+  const inCat = useMemo(() => days.filter(d => sort0.catOf(d) === catId), [days, sort0, catId]);
+  /* пришли из поиска: показать и подсветить нужное воспоминание */
+  useEffect(() => {
+    if (!highlight) return undefined;
+    setQ('');
+    const tm = setTimeout(() => {
+      const el = [...document.querySelectorAll('.cv-card')].find(x => x.dataset.id === highlight);
+      if (!el) return;
+      const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      el.scrollIntoView({ block: 'center', behavior: reduce ? 'auto' : 'smooth' });
+      const b = el.querySelector('.cv-open'); if (b) b.focus({ preventScroll: true });
+    }, 80);
+    return () => clearTimeout(tm);
+  }, [highlight, catId]);
   const shown = useMemo(() => {
     const nq = norm(q.trim());
     const list = nq ? inCat.filter(d => norm(d.title).includes(nq) || norm(d.text).includes(nq)) : inCat;
@@ -95,7 +110,7 @@ export function CategoryView({ catId, days, cats, layout, onBack, onOpen, onMove
       : !total ? html`<p class="cv-empty">${t('catv.notFound')}</p>`
       : shown.map(g => html`<div key=${g.key} class="cv-group">
           <h3>${g.label} <small>${g.items.length}</small></h3>
-          <ul class="cv-grid">${g.items.map(d => html`<li key=${d.id} class="cv-card">
+          <ul class="cv-grid">${g.items.map(d => html`<li key=${d.id} class=${'cv-card' + (d.id === highlight ? ' hi' : '')} data-id=${d.id}>
             <div class="cv-open" role="button" tabIndex="0" aria-label=${t('map.open', { title: d.title })} onClick=${() => onOpen(d.id)} onKeyDown=${e => key(e, d.id)}>
               <${Scene} d=${d} live=${false}/>
             </div>

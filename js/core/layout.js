@@ -1,34 +1,32 @@
 /* =====================================================================
    Раскладка карты воспоминаний (общая для карты и экрана категории).
-   - catOf: к какой категории относится день (раскладка пользователя → старое поле day.cat → настроение).
-     Настроение = один из 8 секторов карты настроения: точка, которую поставил пользователь,
+   - daySector: сектор карты настроения дня — точка, которую поставил пользователь,
      а если её нет или она в центре — рассчитанная атмосфера дня (style.val / style.aro);
+     сам выбор круга — makeSorter в sorter.js;
    - packCircle: аккуратная сетка до 6 карточек внутри круга без наложений + место для «+N»;
    - looseSpot: место для карточки без категории.
    ===================================================================== */
 import { rng, hash, clamp } from '../lib/util.js';
-import { isMood, sectorOf } from './analysis.js';
+import { isMood, sectorOf, analyze } from './analysis.js';
 
 /* 8 секторов карты настроения → 8 стандартных кругов (5 прежних id сохранены, их записи не переезжают) */
 export const SECTOR_CAT = { delight: 'c-collage', joy: 'c-joy', calmJoy: 'c-monet', calm: 'c-film', sad: 'c-minimal', gloom: 'c-gloom', anxiety: 'c-kandinsky', alert: 'c-alert' };
-export function daySector(d) {
+/* Без точки на карте: атмосфера дня (style.val/aro) + явные слова настроения в тексте («дедлайн», «грустно», «счастье»),
+   которые тянут точку в свою сторону. A — готовый analyze(), если уже посчитан. */
+const DOM_DIR = { joy: [1, 0], energy: [0, 1], tense: [-.7, .7], sad: [-.7, -.7], calm: [0, -1] };
+export function daySector(d, A) {
   const m = d.mood;
   if (isMood(m) && Math.hypot(m.valence, m.energy) >= .25) return sectorOf(m.valence, m.energy);
   const st = d.style || {};
-  const v = (isFinite(st.val) ? st.val : .5) * 2 - 1, e = (isFinite(st.aro) ? st.aro : .5) * 2 - 1;
+  let v = (isFinite(st.val) ? st.val : .5) * 2 - 1, e = (isFinite(st.aro) ? st.aro : .5) * 2 - 1;
+  const a = A || analyze({ text: d.text, photos: d.photos || [], song: d.song, mood: null, date: d.date, ctx: d.ctx });
+  const top = Object.entries(a.sc).sort((x, y) => y[1] - x[1])[0];
+  if (top && top[1] > 0 && DOM_DIR[top[0]]) { v += .6 * top[1] * DOM_DIR[top[0]][0]; e += .6 * top[1] * DOM_DIR[top[0]][1]; }
   return Math.hypot(v, e) < .15 ? 'calm' : sectorOf(v, e);
 }
 
 export const PREVIEW_MAX = 6;
-
-export function catOf(d, cats, layout) {
-  const e = layout[d.id];
-  if (e && !e.auto) return e.cat;
-  if (!e && d.cat !== undefined) return d.cat;                     // записи старого формата
-  const want = SECTOR_CAT[daySector(d)];
-  if (cats.some(c => c.id === want)) return want;
-  return cats.some(c => c.id === 'c-' + d.style.tech) ? 'c-' + d.style.tech : null;   // круг удалён — прежнее правило по приёму
-}
+/* К какому кругу относится день — см. makeSorter в sorter.js (ручной перенос → свои круги → сектор настроения). */
 
 /* Карточки без категории — в середине карты (в сетке 3×3 центр свободен; в старом кольце из 5 кругов — тоже). */
 export function looseSpot(id) {

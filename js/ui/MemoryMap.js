@@ -7,11 +7,12 @@
    - раскладка карточек хранится в служебной записи пользователя, а не в каждом дне:
      перетаскивание больше не отправляет на сервер весь день с фото (Б10).
    ===================================================================== */
-import { html, useState, useEffect, useRef } from '../lib/react.js';
+import { html, useState, useEffect, useRef, useMemo } from '../lib/react.js';
 import { clamp, hash } from '../lib/util.js';
 import { useT, allValues } from '../i18n/index.js';
 import { Scene } from './Scene.js';
-import { catOf as catOfDay, packCircle, looseSpot, byNewest, PREVIEW_MAX } from '../core/layout.js';
+import { packCircle, looseSpot, byNewest, PREVIEW_MAX } from '../core/layout.js';
+import { makeSorter, manualCat } from '../core/sorter.js';
 
 /* 8 кругов стоят так же, как сектора на карте настроения: вверху — энергично, справа — радостно,
    внизу — спокойно, слева — грустно (сетка 3×3 без центра). */
@@ -69,7 +70,7 @@ export function catLabel(c, t) {
 let lastView = null;
 export const resetMapView = () => { lastView = null; };
 
-export function MemoryMap({ days, cats, layout, onOpen, onMeta, onSort, onSeed, onEnterCat }) {
+export function MemoryMap({ days, cats, layout, sorter, focus, onFocusDone, onOpen, onMeta, onSort, onSeed, onEnterCat }) {
   const t = useT();
   const box = useRef(null);
   const [v, setV] = useState(lastView || { x: 400, y: 300, k: .7 });
@@ -106,7 +107,8 @@ export function MemoryMap({ days, cats, layout, onOpen, onMeta, onSort, onSeed, 
   /* ---- где лежит карточка ----
      В круге: до 6 новых карточек аккуратной сеткой (packCircle), остальные — «+N» и экран категории.
      Без категории: там, куда положил пользователь (или в свободной зоне под кругами). */
-  const catOf = d => catOfDay(d, cats, layout);
+  const sort0 = useMemo(() => sorter || makeSorter(days, cats, layout), [sorter, days, cats, layout]);
+  const catOf = d => sort0.catOf(d);
   const loosePos = d => { const e = layout[d.id]; if (e && !e.auto && e.cat == null) return { x: e.x, y: e.y }; if (!e && d.pos && d.cat == null) return d.pos; return looseSpot(d.id); };
   const dx = drag ? drag.dx : 0, dy = drag ? drag.dy : 0;
   const cs = cats.map(c => (drag && drag.type === 'cat' && drag.id === c.id ? { ...c, x: c.x + dx, y: c.y + dy } : c));
@@ -170,6 +172,7 @@ export function MemoryMap({ days, cats, layout, onOpen, onMeta, onSort, onSeed, 
   const onDown = e => {
     if (e.target.closest('input,button,select,textarea,a')) return;
     if (e.button !== undefined && e.button !== 0) return;
+    cancelAnimationFrame(anim.current);                                  // пользователь сам двигает карту — перелёт прекращается
     e.preventDefault();                                                  // не начинать выделение текста
     try { box.current.setPointerCapture(e.pointerId); } catch (x) {}
     const first = ptrs.current.size === 0;
@@ -205,21 +208,62 @@ export function MemoryMap({ days, cats, layout, onOpen, onMeta, onSort, onSeed, 
     onMeta({ cats: [...cats, { id: 'c' + Date.now().toString(36), name: n, x: Math.round((r.width / 2 - v.x) / v.k), y: Math.round((r.height / 2 - v.y) / v.k), r: 170, color: `hsl(${hash(n) % 360} 45% 52%)` }] });
     setName(''); setAdd(false);
   };
+  /* Удаление круга: воспоминания не удаляются. Положенные туда вручную снова раскладываются сами —
+     в подходящий круг (свой или ближайший по настроению), а если такого нет — в центр карты без круга. */
   const delCat = c => {
     if (!window.confirm(t('map.delCatConfirm', { name: catLabel(c, t) }))) return;
     const nl = { ...layout };
-    days.filter(d => catOf(d) === c.id).forEach(d => { const p = base(d) || { x: c.x, y: c.y }; nl[d.id] = { x: Math.round(p.x), y: Math.round(p.y), cat: null }; });
+    days.forEach(d => { const m = manualCat(d, layout); if (m && m.cat === c.id) nl[d.id] = { auto: true }; });
     onMeta({ cats: cats.filter(x => x.id !== c.id), layout: nl });
   };
   const rename = () => { if (ed && ed.value.trim()) onMeta({ cats: cats.map(c => (c.id === ed.id ? { ...c, name: ed.value.trim().slice(0, 60) } : c)) }); setEd(null); };
   const stop = e => e.stopPropagation();
+
+  /* ---- поиск: плавный перелёт к кругу или карточке и подсветка ---- */
+  const anim = useRef(0), [hi, setHi] = useState(null);
+  useEffect(() => () => cancelAnimationFrame(anim.current), []);
+  useEffect(() => { if (!hi) return undefined; const tm = setTimeout(() => setHi(null), 2600); return () => clearTimeout(tm); }, [hi]);
+  const viewFor = (cx, cy, w, h) => {
+    const r = box.current.getBoundingClientRect(), top = (tool.current ? tool.current.offsetHeight : 40) + 20, ah = Math.max(80, r.height - top - 28);
+    const k = clamp(Math.min(r.width / w, ah / h), .3, 1.4);
+    return { k, x: r.width / 2 - cx * k, y: top + ah / 2 - cy * k };
+  };
+  const flyTo = (to, done) => {
+    cancelAnimationFrame(anim.current);
+    const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const from = vRef.current, t0 = performance.now(), dur = reduce ? 0 : 650;
+    const step = now => {
+      const p = dur ? Math.min(1, (now - t0) / dur) : 1, e = p < .5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2;
+      setV({ k: from.k + (to.k - from.k) * e, x: from.x + (to.x - from.x) * e, y: from.y + (to.y - from.y) * e });
+      if (p < 1) anim.current = requestAnimationFrame(step); else done();
+    };
+    anim.current = requestAnimationFrame(step);
+  };
+  useEffect(() => {
+    if (!focus || !box.current) return undefined;
+    if (!lastView) vRef.current = fitView();                              // первый показ карты — летим от общего вида
+    let c = null, p = null, enter = null;
+    if (focus.type === 'cat') c = cats.find(x => x.id === focus.id);
+    else {
+      const d = days.find(x => x.id === focus.id);
+      if (d) { c = cats.find(x => x.id === catOf(d)); if (c) enter = c.id; else p = plan.pos[d.id]; }
+    }
+    if (!c && !p) { if (onFocusDone) onFocusDone({ enter: null }); return undefined; }
+    let tm = 0;
+    setHi(null);
+    flyTo(c ? viewFor(c.x, c.y - 24, c.r * 2 + 80, c.r * 2 + 120) : viewFor(p.x, p.y, 420, 420), () => {
+      setHi(c ? { cat: c.id } : { day: focus.id });
+      if (onFocusDone) tm = setTimeout(() => onFocusDone({ enter, day: focus.id }), enter ? 420 : 0);
+    });
+    return () => clearTimeout(tm);
+  }, [focus && focus.n]);
   const cardKey = (e, id) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpen(id); } };
 
   return html`<div class="map" ref=${box} role="region" aria-label=${t('map.label')}
       onPointerDown=${onDown} onPointerMove=${onMove} onPointerUp=${onUp} onPointerCancel=${onUp}
       style=${{ backgroundPosition: `${v.x}px ${v.y}px`, backgroundSize: `${28 * v.k}px ${28 * v.k}px` }}>
     <div class="world" style=${{ transform: `translate(${v.x}px,${v.y}px) scale(${v.k})` }}>
-      ${cs.map(c => { const ex = plan.extra[c.id]; return html`<div key=${c.id} class="circ" data-id=${c.id} title=${t('map.circTitle')} style=${{ left: c.x - c.r, top: c.y - c.r, width: c.r * 2, height: c.r * 2, '--cc': c.color }}>
+      ${cs.map(c => { const ex = plan.extra[c.id]; return html`<div key=${c.id} class=${'circ' + (hi && hi.cat === c.id ? ' hi' : '')} data-id=${c.id} title=${t('map.circTitle')} style=${{ left: c.x - c.r, top: c.y - c.r, width: c.r * 2, height: c.r * 2, '--cc': c.color }}>
         <div class="clab" onPointerDown=${e => begin(e, 'cat', c.id)} onDoubleClick=${() => setEd({ id: c.id, value: catLabel(c, t) })} title=${t('map.catTitle')}>
           ${ed && ed.id === c.id
             ? html`<input autoFocus=${true} maxLength="60" aria-label=${t('map.catName')} value=${ed.value} onPointerDown=${stop} onChange=${e => setEd({ ...ed, value: e.target.value })} onBlur=${rename} onKeyDown=${e => { if (e.key === 'Enter') rename(); if (e.key === 'Escape') setEd(null); }}/>`
@@ -235,7 +279,7 @@ export function MemoryMap({ days, cats, layout, onOpen, onMeta, onSort, onSeed, 
       ${days.map(d => {
         const p = show(d); if (!p) return null;
         const on = drag && drag.type === 'card' && drag.id === d.id;
-        return html`<div key=${d.id} class=${'mc' + (on ? ' dr' : '')} style=${{ left: p.x - 42, top: p.y - 75, '--s': p.s }}
+        return html`<div key=${d.id} class=${'mc' + (on ? ' dr' : '') + (hi && hi.day === d.id ? ' hi' : '')} data-id=${d.id} style=${{ left: p.x - 42, top: p.y - 75, '--s': p.s }}
             role="button" tabIndex="0" aria-label=${t('map.open', { title: d.title })}
             onPointerDown=${e => begin(e, 'card', d.id)} onKeyDown=${e => cardKey(e, d.id)}>
           <${Scene} d=${d} live=${false}/><span>${d.title}</span></div>`;
@@ -251,6 +295,7 @@ export function MemoryMap({ days, cats, layout, onOpen, onMeta, onSort, onSeed, 
       <button class="btn sq" aria-label=${t('map.zoomOut')} title=${t('map.zoomOut')} onClick=${() => zoomC(.8)}>−</button>
       <button class="btn sq" aria-label=${t('map.fit')} title=${t('map.fit')} onClick=${() => setV(fitView())}>⤢</button>
     </div>
+    ${add && html`<p class="mtool-hint" onPointerDown=${stop}>${t('map.addHint')}</p>`}
     ${!days.length && html`<div class="mempty"><div onPointerDown=${stop}><p>${t('map.empty')}</p><button class="btn" onClick=${onSeed}>${t('map.demo')}</button></div></div>`}
     <div class="mhint">${t('map.hint')}</div>
   </div>`;

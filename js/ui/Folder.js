@@ -9,8 +9,19 @@ import { Player } from './Player.js';
 import { DayForm } from './DayForm.js';
 import { MoodFace } from './MoodFace.js';
 import { Ingredients } from './Ingredients.js';
+import { Icon } from './Icons.js';
 
-export function Folder({ d, onBack, onSave, onDelete }) {
+/* where: { name, by, n, sector } — в каком круге лежит воспоминание и почему (см. makeSorter) */
+function whereText(w, t) {
+  if (!w) return '';
+  if (w.by === 'none' || !w.name) return t('where.none');
+  if (w.by === 'manual') return t('where.manual', { name: w.name });
+  if (w.by === 'name') return t('where.name', { name: w.name });
+  if (w.by === 'like') return t('where.like', { name: w.name, n: w.n, memories: t.plural('memories', w.n) });
+  return t(w.by === 'near' ? 'where.near' : 'where.mood', { name: w.name, sector: t('sector.' + w.sector) });
+}
+
+export function Folder({ d, where, onBack, onSave, onDelete }) {
   const t = useT();
   const st = d.style, s = d.song;
   const [edit, setEdit] = useState(false), [ask, setAsk] = useState(false);
@@ -30,6 +41,7 @@ export function Folder({ d, onBack, onSave, onDelete }) {
       <div>
         <p class="meta">${t.date(d.date)}${mus ? '  ·  ♪ ' + mus : ''}${isMood(d.mood) ? html`<span class="mood-chip"><${MoodFace} v=${d.mood.valence} e=${d.mood.energy}/>${t('sector.' + moodSector(d.mood.valence, d.mood.energy))}</span>` : ''}</p>
         <h2 class="folder-title">${d.title}</h2>
+        ${where && html`<p class="where"><${Icon} name="bubble" size=${16}/>${whereText(where, t)}</p>`}
         <blockquote class="story">${d.text}</blockquote>
         <div class="bar">
           <button class="btn" onClick=${() => speak(d, voice)}>${t('folder.speak')}</button>

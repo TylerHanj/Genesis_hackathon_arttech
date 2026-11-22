@@ -7,7 +7,9 @@ import { I18n, makeT, detectLang, isLang } from '../i18n/index.js';
 import { Auth } from './Auth.js';
 import { DayForm } from './DayForm.js';
 import { Folder } from './Folder.js';
-import { MemoryMap, defaultCats, upgradeCats, resetMapView } from './MemoryMap.js';
+import { MemoryMap, defaultCats, upgradeCats, resetMapView, catLabel } from './MemoryMap.js';
+import { Search } from './Search.js';
+import { makeSorter, manualCat, isStdCat } from '../core/sorter.js';
 import { SidePanel } from './SidePanel.js';
 import { About } from './About.js';
 import { CategoryView } from './CategoryView.js';
@@ -50,6 +52,7 @@ export function App() {
   const [user, setUser] = useState(undefined);
   const [tab, setTab] = useState('map'), [open, setOpen] = useState(null), [note, setNote] = useState('');
   const [catView, setCatView] = useState(null);   // открытая категория («внутри пузыря»)
+  const [focus, setFocus] = useState(null), [hiDay, setHiDay] = useState(null);   // поиск: куда лететь на карте и что подсветить
   const [days, setDays] = useState([]), [meta, setMeta] = useState({ cats: [], layout: {} }), [loaded, setLoaded] = useState(false);
   const metaRef = useRef(meta); metaRef.current = meta;
 
@@ -89,11 +92,26 @@ export function App() {
     if (metaRef.current.layout[id]) { const { [id]: _, ...rest } = metaRef.current.layout; saveMeta({ layout: rest }); }
   };
   const demo = async () => { for (const d of await seedDays(uid)) saveDay(d); };
+  /* «Разложить по настроению»: карточки снова раскладываются сами. То, что вы положили в СВОИ круги, остаётся —
+     только вы знаете, зачем нужен круг «asdasd»; эти карточки — ещё и примеры, по которым туда попадают похожие. */
   const sort = () => {
-    const layout = {};
-    days.forEach(d => { if (d.pos || d.cat !== undefined) layout[d.id] = { auto: true }; });  // старые ручные места тоже сбрасываются
+    const cur = metaRef.current, layout = {};
+    days.forEach(d => {
+      const m = manualCat(d, cur.layout);
+      if (m && m.cat && !isStdCat(m.cat) && cur.cats.some(c => c.id === m.cat)) layout[d.id] = cur.layout[d.id] && !cur.layout[d.id].auto ? cur.layout[d.id] : { x: 0, y: 0, cat: m.cat };
+      else if (d.pos || d.cat !== undefined) layout[d.id] = { auto: true };   // старые ручные места тоже сбрасываются
+    });
     saveMeta({ layout });
   };
+  const sorter = useMemo(() => makeSorter(days, meta.cats, meta.layout), [days, meta.cats, meta.layout]);
+  const where = useMemo(() => d => sorter.catOf(d), [sorter]);
+  /* Поиск: круг — карта подлетает к нему; воспоминание — к его кругу, затем внутрь и подсветка карточки. */
+  const pick = it => {
+    setOpen(null); setTab('map'); setHiDay(null);
+    if (catView) { setCatView(null); clearUrl(); }
+    setFocus({ type: it.type, id: it.id, n: Date.now() });
+  };
+  const focusDone = ({ enter, day }) => { setFocus(null); if (enter) { enterCat(enter); setHiDay(day); } };
   const logout = async () => { await auth.signOut(); resetMapView(); setOpen(null); setCatView(null); clearUrl(); setUser(null); };
 
   /* Категория в адресе (?cat=…): кнопка «Назад» браузера работает, параметр принимается только из списка своих категорий. */
@@ -106,12 +124,12 @@ export function App() {
   }, []);
   useEffect(() => { if (loaded) { const id = catFromUrl(); if (id) { setTab('map'); setCatView(id); } else clearUrl(); } }, [loaded]);
   const enterCat = id => { if (!metaRef.current.cats.some(c => c.id === id)) return; setCatView(id); setOpen(null); history.pushState({ cat: id }, '', '?cat=' + encodeURIComponent(id)); };
-  const leaveCat = () => { if (history.state && history.state.cat) history.back(); else { setCatView(null); clearUrl(); } };
+  const leaveCat = () => { setHiDay(null); if (history.state && history.state.cat) history.back(); else { setCatView(null); clearUrl(); } };
   const moveDay = (id, to) => {
     const c = metaRef.current.cats.find(x => x.id === to);
     saveMeta({ layout: { ...metaRef.current.layout, [id]: c ? { x: c.x, y: c.y, cat: c.id } : { ...looseSpot(id), cat: null } } });
   };
-  const go = k => { setTab(k); setOpen(null); setCatView(null); clearUrl(); };
+  const go = k => { setTab(k); setOpen(null); setCatView(null); setHiDay(null); setFocus(null); clearUrl(); };
   const cur = days.find(d => d.id === open);
   const NAV = [['map', 'nav.map'], ['new', 'nav.new'], ['about', 'nav.about']];
   const navItems = NAV.map(([k, l]) => ({ key: k, label: t(l), on: tab === k && !cur, go: () => go(k) }));
@@ -131,10 +149,13 @@ export function App() {
     const navBtn = n => html`<button key=${n.key} class=${'nav-btn' + (n.on ? ' on' : '')} aria-current=${n.on ? 'page' : undefined} onClick=${n.go}>${n.label}</button>`;
     let content;
     if (!loaded) content = html`<div class="skeleton" aria-busy="true" aria-label=${t('loading')}></div>`;
-    else if (cur) content = html`<${Folder} key=${cur.id} d=${cur} onBack=${() => setOpen(null)} onSave=${saveDay} onDelete=${del}/>`;
+    else if (cur) {
+      const w = sorter(cur), c = meta.cats.find(x => x.id === w.cat);
+      content = html`<${Folder} key=${cur.id} d=${cur} where=${{ ...w, name: c ? catLabel(c, t) : '' }} onBack=${() => setOpen(null)} onSave=${saveDay} onDelete=${del}/>`;
+    }
     else if (tab === 'new') content = html`<${DayForm} onSave=${d => { saveDay(d); setTab('map'); setOpen(d.id); }}/>`;
-    else if (tab === 'map' && catView) content = html`<${CategoryView} catId=${catView} days=${days} cats=${meta.cats} layout=${meta.layout} onBack=${leaveCat} onOpen=${setOpen} onMove=${moveDay}/>`;
-    else if (tab === 'map') content = html`<${MemoryMap} days=${days} cats=${meta.cats} layout=${meta.layout} onOpen=${setOpen} onMeta=${saveMeta} onSort=${sort} onSeed=${demo} onEnterCat=${enterCat}/>`;
+    else if (tab === 'map' && catView) content = html`<${CategoryView} catId=${catView} days=${days} cats=${meta.cats} layout=${meta.layout} sorter=${sorter} highlight=${hiDay} onBack=${leaveCat} onOpen=${setOpen} onMove=${moveDay}/>`;
+    else if (tab === 'map') content = html`<${MemoryMap} days=${days} cats=${meta.cats} layout=${meta.layout} sorter=${sorter} focus=${focus} onFocusDone=${focusDone} onOpen=${setOpen} onMeta=${saveMeta} onSort=${sort} onSeed=${demo} onEnterCat=${enterCat}/>`;
     else content = html`<${About}/>`;
     body = html`<div class="shell">
       <aside class="side">
@@ -144,7 +165,8 @@ export function App() {
         <nav class="nav nav-secondary" aria-label=${t('nav.about')}>${navBtn(navItems[2])}<button class="nav-btn" onClick=${logout} title=${user.email}>${t('nav.logout')}</button></nav>
       </aside>
       <div class="main-col">
-        <header class="topbar"><div class="topbar-brand"><${Brand} t=${t} as="p"/></div>${menu}</header>
+        <header class="topbar"><div class="topbar-brand"><${Brand} t=${t} as="p"/></div>
+          ${loaded && html`<${Search} days=${days} cats=${meta.cats} where=${where} onPick=${pick}/>`}${menu}</header>
         <main id="main" tabIndex="-1">
           ${note && html`<p class="err banner" role="alert">${t(note)}</p>`}
           ${content}
