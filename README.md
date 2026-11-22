@@ -102,20 +102,6 @@
 - Серверная функция `music-meta` обращается только к фиксированным адресам и проверяет вход
 - Координаты не сохраняются, погода и место — только после включения переключателя
 
-## Как запустить
-
-Сайт — набор статических файлов без сборки. Локально — любой статический сервер (из-за ES-модулей двойной клик по `index.html` не сработает):
-
-```bash
-npx serve .
-```
-
-**Деплой:** Vercel берёт репозиторий как есть (Framework *Other*, без команды сборки); что публикуется, задаёт [`.vercelignore`](.vercelignore). **База:** Supabase → SQL Editor → [`supabase/migrations/0001_days_rls.sql`](supabase/migrations/0001_days_rls.sql), проверка — [`supabase/tests/0001_days_rls_test.sql`](supabase/tests/0001_days_rls_test.sql). В [`js/config.js`](js/config.js) только публичный (publishable) ключ.
-
-**Тесты:** `node tests/e2e/run.js` (браузер, Playwright), `node tests/audio/analysis.test.mjs` (анализ звука), `node --experimental-strip-types tests/functions/music-meta.test.mjs` (серверная функция).
-
-<br>
-
 ## Библиотеки, готовые ресурсы, API и AI-инструменты
 
 **Библиотеки** — хранятся в [`vendor/`](vendor/) с зафиксированными версиями, без CDN ([лицензии](vendor/LICENSES.md)):
