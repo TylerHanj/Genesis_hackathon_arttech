@@ -12,8 +12,8 @@ import { todayLocal, isValidDate, uid } from '../lib/util.js';
 import { checkAudio, prepImage } from '../lib/files.js';
 import { parseTrackLink } from '../lib/links.js';
 import { makeDay, DEFAULT_SONG, moodToMusicParams, isMood, genreProfile, eraOf } from '../core/analysis.js';
-import { analyzeAudioFile } from '../core/audio.js';
-import { fetchSongMeta } from '../lib/musicmeta.js';
+import { analyzeAudioFile, analyzeAudioBuffer, combineSongData } from '../core/audio.js';
+import { fetchSongMeta, fetchPreview } from '../lib/musicmeta.js';
 import { ContextBlock } from './ContextBlock.js';
 import { useT } from '../i18n/index.js';
 import { MoodMap } from './MoodMap.js';
@@ -45,6 +45,9 @@ export function DayForm({ init, onSave, onCancel }) {
   const [an, setAn] = useState(s0.an && s0.an.src === 'audio' ? s0.an : null), [listening, setListening] = useState(false);
   const [meta, setMeta] = useState(null), [metaState, setMetaState] = useState(s0.title ? 'accepted' : 'idle');
   const [metaLink, setMetaLink] = useState(s0.title ? (s0.link || '') : '');   // для какой ссылки описание уже принято/отклонено
+  /* данные о песне по ссылке из открытых источников: фрагмент песни (темп, лад, энергия) и темп из Deezer */
+  const [linkAn, setLinkAn] = useState(s0.an && (s0.an.src === 'preview' || s0.an.src === 'db') ? s0.an : null), [linkBusy, setLinkBusy] = useState(false);
+  const linkRef = useRef((s0.link || '').trim());
   const [ctx, setCtx] = useState(init && init.ctx ? init.ctx : {});
   const [err, setErr] = useState(''), [busy, setBusy] = useState(false);
   const set = (k, v) => setF(o => ({ ...o, [k]: v }));
@@ -53,13 +56,19 @@ export function DayForm({ init, onSave, onCancel }) {
 
   /* Параметры песни: сначала сама песня (анализ звука файла → жанр из описания), потом настроение, потом прежние значения. */
   const fromMood = mood ? moodToMusicParams(mood.valence, mood.energy) : null, prof = genreProfile(f.genre);
+  const moodMode = fromMood ? fromMood.mode : (s0.mode || DEFAULT_SONG.mode);
   let base, src;
   if (an && an.bpm) { base = { bpm: an.bpm, mode: an.mode, energy: an.energy }; src = 'audio'; }
+  else if (linkAn && linkAn.bpm) {                                  // фрагмент: свой лад; только Deezer: лад по настроению
+    base = { bpm: linkAn.bpm, mode: linkAn.src === 'preview' ? linkAn.mode : moodMode, energy: linkAn.energy != null ? linkAn.energy : (prof ? prof.energy : DEFAULT_SONG.energy) };
+    src = linkAn.src;
+  }
   else if (prof) { base = { bpm: prof.bpm, energy: prof.energy, mode: fromMood ? fromMood.mode : (s0.mode || DEFAULT_SONG.mode) }; src = 'meta'; }
   else if (fromMood) { base = fromMood; src = 'mood'; }
   else { base = { bpm: s0.bpm || DEFAULT_SONG.bpm, mode: s0.mode || DEFAULT_SONG.mode, energy: s0.energy == null ? DEFAULT_SONG.energy : s0.energy }; src = ''; }
   const energy = manualEnergy != null ? manualEnergy : base.energy;
-  const energyNote = manualEnergy != null ? t('adv.manual') : src === 'audio' ? t('form.measured') : src === 'meta' ? t('adv.fromGenre') : src === 'mood' ? t('adv.auto') : '';
+  const energyNote = manualEnergy != null ? t('adv.manual') : src === 'audio' ? t('form.measured') : src === 'preview' ? t('adv.fromPreview') : src === 'db' ? t('adv.fromDeezer')
+    : src === 'meta' ? t('adv.fromGenre') : src === 'mood' ? t('adv.auto') : '';
   const era = eraOf(f.year);
 
   async function pickAudio(e) {
@@ -74,6 +83,8 @@ export function DayForm({ init, onSave, onCancel }) {
 
   /* Описание песни по ссылке (если развёрнута функция music-meta): предлагаем, пользователь подтверждает */
   useEffect(() => {
+    linkRef.current = f.link.trim();
+    if (f.link.trim() !== metaLink) setLinkAn(null);                        // другая песня — прежний анализ не подходит
     const p = parseTrackLink(f.link.trim());
     if (!p || p.source === 'url' || f.link.trim() === metaLink) return undefined;
     let alive = true;
@@ -85,7 +96,24 @@ export function DayForm({ init, onSave, onCancel }) {
     }, 700);
     return () => { alive = false; clearTimeout(tm); };
   }, [f.link]);
-  const acceptMeta = () => { setF(o => ({ ...o, songTitle: meta.title, artist: meta.artist || o.artist, year: meta.year || o.year, genre: meta.genre, cover: meta.cover })); setMetaState('accepted'); setMeta(null); setMetaLink(f.link.trim()); };
+  const acceptMeta = () => {
+    const m = meta, link = f.link.trim();
+    setF(o => ({ ...o, songTitle: m.title, artist: m.artist || o.artist, year: m.year || o.year, genre: m.genre, cover: m.cover })); setMetaState('accepted'); setMeta(null); setMetaLink(link);
+    listenLink(m, link);
+  };
+  /* После подтверждения: слушаем 30-секундный фрагмент (темп, лад, тональность, энергия) и сверяем темп с Deezer. */
+  async function listenLink(m, link) {
+    if (!m.preview && !m.bpm) return;
+    setLinkAn(null); setLinkBusy(true);
+    let a = null;
+    if (m.preview) {
+      const buf = await fetchPreview(m.preview);
+      if (buf) { try { a = await analyzeAudioBuffer(buf); } catch (x) { a = null; } }   // не удалось декодировать — останется темп из Deezer
+    }
+    const r = combineSongData(a, { bpm: m.bpm, gain: m.gain });
+    if (linkRef.current === link) setLinkAn(r);
+    setLinkBusy(false);
+  }
   const files = items.filter(x => x.kind === 'file').map(x => x.file);
 
   async function submit() {
@@ -100,7 +128,10 @@ export function DayForm({ init, onSave, onCancel }) {
       const photos = [];
       for (const x of items) photos.push(x.kind === 'keep' ? x.p : await prepImage(x.file));
       const fileUrl = audio ? URL.createObjectURL(audio) : (s0.fileUrl || null);
-      const songAn = src === 'audio' ? { ...an, src: 'audio' } : src === 'meta' ? { bpm: base.bpm, mode: base.mode, energy: base.energy, src: 'meta' } : null;
+      const songAn = src === 'audio' ? { ...an, src: 'audio' }
+        : src === 'preview' || src === 'db' ? { bpm: base.bpm, mode: base.mode, energy: base.energy, src, ...(linkAn.key ? { key: linkAn.key } : {}),
+          ...(linkAn.bright != null ? { bright: linkAn.bright } : {}), ...(linkAn.conf != null ? { conf: linkAn.conf } : {}), ...(linkAn.dz ? { dz: true } : {}) }
+        : src === 'meta' ? { bpm: base.bpm, mode: base.mode, energy: base.energy, src: 'meta' } : null;
       const day = makeDay({
         id: init && init.id, date: f.date, text: f.text.slice(0, 20000), photos, mood, ctx, customTitle: f.title.trim().slice(0, 140), newId: uid,
         song: {
@@ -136,6 +167,10 @@ export function DayForm({ init, onSave, onCancel }) {
               <button type="button" class="btn ghost" onClick=${() => { setMeta(null); setMetaState('rejected'); setMetaLink(f.link.trim()); }}>${t('meta.reject')}</button></div>
           </div>`}
           ${metaState === 'accepted' && f.songTitle && html`<p class="hint">♪ ${[f.songTitle, f.artist, f.year, f.genre].filter(Boolean).join(' · ')}</p>`}
+          ${linkBusy && html`<p class="hint" role="status">${t('audio.analyzingLink')}</p>`}
+          ${!linkBusy && !(an && an.bpm) && linkAn && linkAn.bpm > 0 && html`<p class="audio-an" role="status">${linkAn.src === 'preview'
+            ? t('audio.resultLink', { bpm: linkAn.bpm, mode: linkAn.mode === 'minor' ? t('form.minor') : t('form.major'), key: linkAn.key || '', e: Math.round(base.energy * 100) }) + (linkAn.dz ? t('audio.dz') : '')
+            : t('audio.resultDb', { bpm: linkAn.bpm, e: Math.round(base.energy * 100) })}</p>`}
           <div class="audio-pick">
             <label class="btn ghost file-btn">${t('audio.choose')}
               <input class="sr-only" type="file" accept="audio/mpeg,audio/mp4,audio/x-m4a,audio/ogg,.mp3,.m4a,.ogg" onChange=${pickAudio}/></label>

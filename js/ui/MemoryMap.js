@@ -13,14 +13,39 @@ import { useT, allValues } from '../i18n/index.js';
 import { Scene } from './Scene.js';
 import { catOf as catOfDay, packCircle, looseSpot, byNewest, PREVIEW_MAX } from '../core/layout.js';
 
-const DEF = [['monet', 35], ['kandinsky', 215], ['minimal', 250], ['collage', 8], ['film', 90]];
-export const defaultCats = t => DEF.map(([k, h], i) => ({
-  id: 'c-' + k, name: t('cat.' + k),
-  x: Math.round(Math.cos(i * 1.2566 - 1.5708) * 380), y: Math.round(Math.sin(i * 1.2566 - 1.5708) * 380), r: 190, color: `hsl(${h} 45% 52%)`,
-}));
+/* 8 кругов стоят так же, как сектора на карте настроения: вверху — энергично, справа — радостно,
+   внизу — спокойно, слева — грустно (сетка 3×3 без центра). */
+const GX = 470, GY = 480;
+const DEF = [['kandinsky', 215, -1, -1], ['alert', 165, 0, -1], ['collage', 8, 1, -1], ['gloom', 285, -1, 0], ['joy', 48, 1, 0],
+  ['minimal', 250, -1, 1], ['film', 90, 0, 1], ['monet', 35, 1, 1]];
+const GRID = Object.fromEntries(DEF.map(([k, h, gx, gy]) => [k, { x: gx * GX, y: gy * GY, h }]));
+const newCat = (k, t, p) => ({ id: 'c-' + k, name: t('cat.' + k), x: p.x, y: p.y, r: 190, color: `hsl(${GRID[k].h} 45% 52%)` });
+export const defaultCats = t => DEF.map(([k]) => newCat(k, t, GRID[k]));
+
+/* Переход с 5 кругов на 8 (один раз, см. META_V в backend.js).
+   - добавляются недостающие «Светлые дни», «В движении», «Тяжёлые дни» — только если пользователь пользуется стандартными кругами;
+   - если 5 прежних кругов стоят там, где стояли изначально, они переставляются в сетку; иначе раскладка пользователя не трогается,
+     а новые круги ставятся в свободное место. Названия, цвета и записи не меняются. */
+const OLD = ['monet', 'kandinsky', 'minimal', 'collage', 'film'];
+const oldPos = i => ({ x: Math.round(Math.cos(i * 1.2566 - 1.5708) * 380), y: Math.round(Math.sin(i * 1.2566 - 1.5708) * 380) });
+function freeSpot(cats, p) {
+  const free = q => cats.every(c => Math.hypot(c.x - q.x, c.y - q.y) >= c.r + 190 + 40);
+  if (free(p)) return p;
+  const right = Math.max(...cats.map(c => c.x + c.r)) + 40 + 190;
+  for (let row = 0; row < 30; row++) { const q = { x: Math.round(right), y: (row - 1) * GY }; if (free(q)) return q; }
+  return { x: Math.round(right + GX), y: 0 };
+}
+export function upgradeCats(cats, t) {
+  const has = id => cats.some(c => c.id === id);
+  if (!OLD.some(k => has('c-' + k))) return cats;                                   // своя система кругов — не трогаем
+  const untouched = OLD.every((k, i) => { const c = cats.find(x => x.id === 'c-' + k); return !c || (c.x === oldPos(i).x && c.y === oldPos(i).y); });
+  const out = cats.map(c => { const k = c.id.slice(2); return untouched && OLD.includes(k) ? { ...c, x: GRID[k].x, y: GRID[k].y } : c; });
+  for (const k of ['joy', 'alert', 'gloom']) if (!has('c-' + k)) out.push(newCat(k, t, freeSpot(out, GRID[k])));
+  return out;
+}
 /* Стандартные категории показываются на текущем языке, пока пользователь их не переименовал. */
 export function catLabel(c, t) {
-  const m = /^c-(monet|kandinsky|minimal|collage|film)$/.exec(c.id);
+  const m = /^c-(monet|kandinsky|minimal|collage|film|joy|alert|gloom)$/.exec(c.id);
   return m && allValues('cat.' + m[1]).includes(c.name) ? t('cat.' + m[1]) : c.name;
 }
 

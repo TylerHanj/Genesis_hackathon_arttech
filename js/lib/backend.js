@@ -17,6 +17,7 @@ export const sb = (window.supabase && CONFIG.SUPABASE_URL && CONFIG.SUPABASE_PUB
   : null;
 
 const META_ID = 'meta:cats';
+export const META_V = 2;        // 2 — восемь кругов по секторам карты настроения (см. upgradeCats); поле необязательное
 export const MIN_PASSWORD = 8;
 
 /* Остатки старого локального режима (пароли-хэши) больше не нужны — удаляем при старте. */
@@ -83,7 +84,7 @@ export const store = {
     const metaRow = data.find(r => r.id === META_ID);
     const days = data.filter(r => !String(r.id).startsWith('meta:')).map(r => sanitizeDay(r.data)).filter(Boolean);
     const m = metaRow && metaRow.data;
-    return { days, cats: m ? sanitizeCats(m.cats) : null, layout: sanitizeLayout(m && m.layout) };
+    return { days, cats: m ? sanitizeCats(m.cats) : null, layout: sanitizeLayout(m && m.layout), v: m && Number.isInteger(m.v) ? m.v : 1 };
   },
   async saveDay(uid, d) {
     const row = toStored(d);
@@ -91,7 +92,7 @@ export const store = {
     if (error) { log('saveDay', error); throw new AppError(dbErrorKey(error), error); }
   },
   async saveMeta(uid, cats, layout) {
-    const data = { id: META_ID, cats, layout };
+    const data = { id: META_ID, cats, layout, v: META_V };
     const { error } = await sb.from('days').upsert({ id: META_ID, user_id: uid, data });
     if (error) { log('saveMeta', error); throw new AppError(dbErrorKey(error), error); }
   },

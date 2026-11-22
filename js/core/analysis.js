@@ -80,10 +80,15 @@ export const DEFAULT_SONG = { bpm: 118, mode: 'major', energy: .6 };
 
 /* ---------- Карта настроения ---------- */
 export const isMood = m => !!m && isFinite(m.valence) && isFinite(m.energy);
+export const SECTORS = ['joy', 'delight', 'alert', 'anxiety', 'gloom', 'sad', 'calm', 'calmJoy'];
+/* Один из 8 секторов по углу (без «центра»): 0° = вправо (радость), 90° = вверх (энергия), шаг 45°. */
+export function sectorOf(v, e) {
+  const a = (Math.atan2(e, v) * 180 / Math.PI + 360) % 360;
+  return ['joy', 'delight', 'alert', 'anxiety', 'gloom', 'sad', 'calm', 'calmJoy'][Math.round(a / 45) % 8];
+}
 export function moodSector(v, e) {
   if (Math.hypot(v, e) < .25) return 'center';
-  const a = (Math.atan2(e, v) * 180 / Math.PI + 360) % 360;                  // 0° = вправо (радость), 90° = вверх (энергия)
-  return ['joy', 'delight', 'alert', 'anxiety', 'sad', 'gloom', 'calm', 'calmJoy'][Math.round(a / 45) % 8];
+  return sectorOf(v, e);
 }
 const SECTOR_DOM = { center: 'calm', joy: 'joy', delight: 'joy', alert: 'energy', anxiety: 'tense', sad: 'sad', gloom: 'sad', calm: 'calm', calmJoy: 'calm' };
 
@@ -141,7 +146,8 @@ export function analyze({ text, photos, song, mood, date, ctx }) {
   }
   const top = Object.entries(sc).sort((a, b) => b[1] - a[1])[0];
   const dom = top[1] > 0 ? top[0] : md ? SECTOR_DOM[moodSector(md.valence, md.energy)] : (aro > .55 ? 'energy' : 'calm');
-  const tech = sc.tense > .4 && aro > .45 ? 'kandinsky' : val < .4 && aro < .5 ? 'minimal' : aro > .62 && val > .5 ? 'collage' : aro < .55 && val >= .45 ? 'monet' : 'film';
+  const tenseCue = Math.max(sc.tense, md && moodSector(md.valence, md.energy) === 'anxiety' ? .5 : 0);   // «тревога» на карте = как слова о напряжении
+  const tech = tenseCue > .4 && aro > .45 ? 'kandinsky' : val < .4 && aro < .5 ? 'minimal' : aro > .62 && val > .5 ? 'collage' : aro < .55 && val >= .45 ? 'monet' : 'film';
   const seasonT = SEAS.find(s => s[2].test(low)), seasonD = seasonT ? null : seasonOfDate(date);
   const season = seasonT || (seasonD ? SEAS.find(s => s[0] === seasonD) : null);
   const timeT = TIMES.find(t => t[2].test(low));

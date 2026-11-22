@@ -1,13 +1,13 @@
 /* Оболочка приложения: вход, раскладка с боковой панелью (макет со скриншота 2), разделы. */
 import { html, useState, useEffect, useMemo, useRef } from '../lib/react.js';
 import { ls, uid } from '../lib/util.js';
-import { sb, auth, store, AppError } from '../lib/backend.js';
+import { sb, auth, store, AppError, META_V } from '../lib/backend.js';
 import { seedDays } from '../core/demo.js';
 import { I18n, makeT, detectLang, isLang } from '../i18n/index.js';
 import { Auth } from './Auth.js';
 import { DayForm } from './DayForm.js';
 import { Folder } from './Folder.js';
-import { MemoryMap, defaultCats, resetMapView } from './MemoryMap.js';
+import { MemoryMap, defaultCats, upgradeCats, resetMapView } from './MemoryMap.js';
 import { SidePanel } from './SidePanel.js';
 import { About } from './About.js';
 import { CategoryView } from './CategoryView.js';
@@ -69,9 +69,9 @@ export function App() {
     store.load(user.id).then(r => {
       if (!alive) return;
       setDays(r.days);
-      const cats = r.cats || defaultCats(t);
+      const cats = !r.cats ? defaultCats(t) : r.v < META_V ? upgradeCats(r.cats, t) : r.cats;
       setMeta({ cats, layout: r.layout });
-      if (!r.cats) store.saveMeta(user.id, cats, r.layout).catch(fail);
+      if (!r.cats || r.v < META_V) store.saveMeta(user.id, cats, r.layout).catch(fail);
       setTab(r.days.length ? 'map' : 'new'); setLoaded(true);
     }).catch(e => { if (alive) { setNote(e instanceof AppError ? e.key : 'error.load'); setLoaded(true); } });
     return () => { alive = false; };

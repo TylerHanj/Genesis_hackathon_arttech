@@ -171,6 +171,9 @@ export default {
   'cat.minimal': 'Грусть и тишина',
   'cat.collage': 'Яркие и шумные',
   'cat.film': 'Ровные дни',
+  'cat.joy': 'Светлые дни',
+  'cat.alert': 'В движении',
+  'cat.gloom': 'Тяжёлые дни',
 
   'side.label': 'Обзор',
   'side.moodWeek': 'Настроение недели',
@@ -340,4 +343,13 @@ export default {
   'audio.analyzing': 'Слушаю песню…',
   'audio.result': '♪ {bpm} BPM · {mode} ({key}) · энергия {e}% — песня задаст ритм и свет кадра',
   'adv.fromGenre': ' (по жанру песни)',
+  'audio.analyzingLink': 'Слушаю 30-секундный фрагмент песни…',
+  'audio.resultLink': '♪ По фрагменту песни: {bpm} BPM · {mode} ({key}) · энергия {e}% — песня задаст ритм и свет кадра',
+  'audio.resultDb': '♪ Темп из Deezer: {bpm} BPM · энергия {e}% (по темпу и громкости)',
+  'audio.dz': '. Темп сверен с Deezer',
+  'adv.fromPreview': ' (по фрагменту песни)',
+  'adv.fromDeezer': ' (по темпу и громкости из Deezer)',
+  'ing.src.preview': 'по фрагменту песни',
+  'ing.src.db': 'темп из Deezer',
+  'ing.dz': 'темп сверен с Deezer',
 };

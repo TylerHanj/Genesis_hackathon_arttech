@@ -171,6 +171,9 @@ export default {
   'cat.minimal': 'Sadness and silence',
   'cat.collage': 'Bright and loud',
   'cat.film': 'Even days',
+  'cat.joy': 'Happy days',
+  'cat.alert': 'On the move',
+  'cat.gloom': 'Heavy days',
 
   'side.label': 'Overview',
   'side.moodWeek': 'Mood of the week',
@@ -340,4 +343,13 @@ export default {
   'audio.analyzing': 'Listening to the song…',
   'audio.result': '♪ {bpm} BPM · {mode} ({key}) · energy {e}% — the song will set the frame’s rhythm and light',
   'adv.fromGenre': ' (from the genre)',
+  'audio.analyzingLink': 'Listening to a 30-second preview of the song…',
+  'audio.resultLink': '♪ From the preview: {bpm} BPM · {mode} ({key}) · energy {e}% — the song will set the frame’s rhythm and light',
+  'audio.resultDb': '♪ Tempo from Deezer: {bpm} BPM · energy {e}% (from tempo and loudness)',
+  'audio.dz': '. Tempo checked against Deezer',
+  'adv.fromPreview': ' (from the song preview)',
+  'adv.fromDeezer': ' (from Deezer tempo and loudness)',
+  'ing.src.preview': 'from the song preview',
+  'ing.src.db': 'tempo from Deezer',
+  'ing.dz': 'tempo checked against Deezer',
 };

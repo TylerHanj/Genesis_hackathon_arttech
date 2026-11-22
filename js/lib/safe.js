@@ -6,12 +6,14 @@
    ===================================================================== */
 import { TECHS, WEATHER_KINDS, ERAS } from '../core/analysis.js';
 import { SCENE_TAGS } from '../core/vision.js';
+import { KEYS } from '../core/audio.js';
 import { parseTrackLink } from './links.js';
 
 const COLOR = /^hsl\(\d{1,3}(?:\.\d+)? \d{1,3}(?:\.\d+)?% \d{1,3}(?:\.\d+)?%\)$/;
 const PHOTO = /^data:image\/(?:jpeg|png|webp|gif);base64,[A-Za-z0-9+/]+=*$/;
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const HEX = /^#[0-9a-f]{6}$/;
+const AN_SRC = ['audio', 'meta', 'preview', 'db'];
 const COVER = /^https:\/\/is\d{1,2}-ssl\.mzstatic\.com\/image\/thumb\/[A-Za-z0-9/._-]{1,300}$/;
 
 const str = (v, max) => (typeof v === 'string' ? v.slice(0, max) : '');
@@ -48,9 +50,10 @@ export function sanitizeDay(raw) {
     title: str(sg.title, 140),
     cover: typeof sg.cover === 'string' && COVER.test(sg.cover) ? sg.cover : '',
   };
-  if (sg.an && typeof sg.an === 'object') {                                  // анализ звука или описание песни
+  if (sg.an && typeof sg.an === 'object') {     // анализ: audio — свой файл, preview — фрагмент песни по ссылке, db — темп из Deezer, meta — по жанру
     song.an = { bpm: Math.round(num(sg.an.bpm, 40, 220, 118)), mode: sg.an.mode === 'minor' ? 'minor' : 'major', energy: num(sg.an.energy, 0, 1, .5),
-      bright: num(sg.an.bright, 0, 1, .5), conf: num(sg.an.conf, 0, 1, 0), src: sg.an.src === 'meta' ? 'meta' : 'audio' };
+      bright: num(sg.an.bright, 0, 1, .5), conf: num(sg.an.conf, 0, 1, 0), src: AN_SRC.includes(sg.an.src) ? sg.an.src : 'audio',
+      ...(KEYS.includes(sg.an.key) ? { key: sg.an.key } : {}), ...(sg.an.dz === true ? { dz: true } : {}) };
   }
   const v = st.voice && typeof st.voice === 'object' ? st.voice : {};
   const style = {

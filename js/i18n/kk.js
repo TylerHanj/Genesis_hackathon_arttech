@@ -171,6 +171,9 @@ export default {
   'cat.minimal': 'Мұң мен тыныштық',
   'cat.collage': 'Жарқын әрі шулы',
   'cat.film': 'Бірқалыпты күндер',
+  'cat.joy': 'Қуанышты күндер',
+  'cat.alert': 'Қозғалыста',
+  'cat.gloom': 'Ауыр күндер',
 
   'side.label': 'Шолу',
   'side.moodWeek': 'Аптаның көңіл-күйі',
@@ -340,4 +343,13 @@ export default {
   'audio.analyzing': 'Әнді тыңдап жатырмын…',
   'audio.result': '♪ {bpm} BPM · {mode} ({key}) · энергия {e}% — ән кадрдың ырғағы мен жарығын анықтайды',
   'adv.fromGenre': ' (ән жанры бойынша)',
+  'audio.analyzingLink': 'Әннің 30 секундтық үзіндісін тыңдап жатырмын…',
+  'audio.resultLink': '♪ Үзінді бойынша: {bpm} BPM · {mode} ({key}) · энергия {e}% — ән кадрдың ырғағы мен жарығын анықтайды',
+  'audio.resultDb': '♪ Deezer-дегі темп: {bpm} BPM · энергия {e}% (темп пен дыбыс қаттылығы бойынша)',
+  'audio.dz': '. Темп Deezer-мен салыстырылды',
+  'adv.fromPreview': ' (ән үзіндісі бойынша)',
+  'adv.fromDeezer': ' (Deezer-дегі темп пен қаттылық бойынша)',
+  'ing.src.preview': 'ән үзіндісі бойынша',
+  'ing.src.db': 'темп Deezer-ден',
+  'ing.dz': 'темп Deezer-мен салыстырылды',
 };

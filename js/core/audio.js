@@ -2,7 +2,9 @@
    Анализ звука загруженного файла (в браузере, без внешних сервисов).
    - темп: огибающая атак + автокорреляция (с поправкой к «естественным» 70–160 BPM);
    - лад и тональность: хрома-вектор (БПФ) + профили Крумхансла (мажор/минор);
-   - энергия: громкость (RMS), как и раньше; «яркость» звука: спектральный центроид.
+   - «яркость» звука: спектральный центроид;
+   - энергия: оценка из темпа, громкости, плотности атак, яркости и лада (estimateEnergy) —
+     та же формула применяется к темпу и громкости из Deezer, если фрагмента песни нет.
    Точность честно средняя: на ритмичной музыке темп обычно верен, лад — чаще всего.
    Чистые функции — их можно проверять и в браузере, и в Node.
    ===================================================================== */
@@ -36,6 +38,43 @@ const corr = (a, b) => {
   return da && db ? n / Math.sqrt(da * db) : 0;
 };
 const clamp = (x, a = 0, b = 1) => Math.max(a, Math.min(b, x));
+const r2 = x => Math.round(x * 100) / 100;
+
+/* Энергия песни 0…1 из того, что известно (недостающие части не учитываются, веса перераспределяются):
+   bpm — темп; loud — громкость 0…1; dens — плотность атак 0…1; bright — яркость звука 0…1; mode — лад. */
+export function estimateEnergy({ bpm, mode, loud, dens, bright } = {}) {
+  const parts = [];
+  if (bpm > 0) parts.push([clamp((bpm - 60) / 120), .3]);
+  if (loud != null && isFinite(loud)) parts.push([clamp(loud), .3]);
+  if (dens != null && isFinite(dens)) parts.push([clamp(dens), .25]);
+  if (bright != null && isFinite(bright)) parts.push([clamp(bright), .15]);
+  if (!parts.length) return null;
+  let e = parts.reduce((s, p) => s + p[0] * p[1], 0) / parts.reduce((s, p) => s + p[1], 0);
+  e += mode === 'minor' ? -.04 : mode === 'major' ? .03 : 0;
+  return r2(clamp(.05 + .95 * e));
+}
+/* Громкость по ReplayGain-поправке Deezer (gain, дБ): громкие мастеринги имеют большую отрицательную поправку. */
+export const gainToLoud = g => (typeof g === 'number' && isFinite(g) ? r2(clamp((5 - g) / 18)) : null);
+/* Наш темп и темп каталога: совпали — берём каталог (точнее); отличаются вдвое — тот, что ближе к «естественным» ~115;
+   не связаны — каталог (он измерен по всей песне, а не по 30 секундам). */
+function pickBpm(dzBpm, ours) {
+  if (!dzBpm) return ours;
+  if (!ours) return dzBpm;
+  const q = dzBpm / ours, near = (a, b) => Math.abs(a / b - 1) < .06;
+  if (near(q, 2) || near(q, .5)) return Math.abs(Math.log2(dzBpm / 115)) <= Math.abs(Math.log2(ours / 115)) ? dzBpm : ours;
+  return dzBpm;
+}
+/* Темп из каталога точнее нашего по «октаве» (60 vs 120); наш — если каталог молчит. */
+export function combineSongData(an, dz) {
+  const dzBpm = dz && dz.bpm >= 40 && dz.bpm <= 250 ? Math.round(dz.bpm) : 0;
+  if (an && an.bpm) {
+    const bpm = pickBpm(dzBpm, an.bpm);
+    return { bpm, mode: an.mode, key: an.key, bright: an.bright, conf: an.conf, src: 'preview', ...(dzBpm && bpm === dzBpm ? { dz: true } : {}),
+      energy: estimateEnergy({ bpm, mode: an.mode, loud: an.loud, dens: an.dens, bright: an.bright }) };
+  }
+  if (dzBpm) return { bpm: dzBpm, mode: null, src: 'db', dz: true, energy: estimateEnergy({ bpm: dzBpm, loud: gainToLoud(dz.gain) }) };
+  return null;
+}
 
 /* samples: Float32Array одного канала, sr: частота дискретизации */
 export function analyzeSamples(samples, sr) {
@@ -46,9 +85,10 @@ export function analyzeSamples(samples, sr) {
   const x = new Float32Array(n);
   for (let i = 0; i < n; i++) { let s = 0; for (let k = 0; k < f; k++) s += src[i * f + k]; x[i] = s / f; }
 
-  // 2) энергия (как раньше: RMS × 3.2)
+  // 2) громкость: RMS в дБ относительно полной шкалы; −30 дБ → 0, −10 дБ → 1
   let rms = 0; for (let i = 0; i < n; i += 4) rms += x[i] * x[i];
-  const energy = clamp(Math.sqrt(rms / Math.ceil(n / 4)) * 3.2);
+  rms = Math.sqrt(rms / Math.ceil(n / 4));
+  const loud = clamp((20 * Math.log10(rms + 1e-9) + 30) / 20);
 
   // 3) темп: огибающая атак по «перепаду» сигнала
   const hop = 128, frames = Math.floor((n - 256) / hop), hopSec = hop / rate;
@@ -61,10 +101,12 @@ export function analyzeSamples(samples, sr) {
   }
   const w = Math.max(1, Math.round(.3 / hopSec)), on = new Float32Array(frames);     // вычесть локальное среднее
   for (let j = 0; j < frames; j++) { let s = 0, c = 0; for (let k = Math.max(0, j - w); k <= Math.min(frames - 1, j + w); k++) { s += env[k]; c++; } on[j] = Math.max(0, env[j] - s / c); }
+  const sm = new Float32Array(frames);                                     // лёгкое сглаживание: период редко равен целому числу кадров
+  for (let j = 0; j < frames; j++) sm[j] = .25 * (on[j - 1] || 0) + .5 * on[j] + .25 * (on[j + 1] || 0);
   let bpm = 0, conf = 0;
   if (frames > 50) {
-    const r0 = on.reduce((s, v) => s + v * v, 0) || 1;
-    const ac = lag => { let s = 0; for (let j = lag; j < frames; j++) s += on[j] * on[j - lag]; return s / r0; };
+    const r0 = sm.reduce((s, v) => s + v * v, 0) || 1;
+    const ac = lag => { let s = 0; for (let j = lag; j < frames; j++) s += sm[j] * sm[j - lag]; return s / r0; };
     let best = 0, bestScore = -1, bestRaw = 0;
     const minLag = Math.ceil(60 / (200 * hopSec)), maxLag = Math.floor(60 / (50 * hopSec));
     const cache = {};
@@ -79,6 +121,15 @@ export function analyzeSamples(samples, sr) {
     const lagF = den ? best + .5 * (y0 - y2) / den : best;
     bpm = Math.round(60 / (lagF * hopSec));
     conf = clamp(bestRaw * 2);
+  }
+  // плотность атак: заметные пики огибающей в секунду (не чаще 10 в секунду); 0,5/с → 0, 5/с → 1
+  let dens = 0;
+  if (frames > 50) {
+    let m = 0, m2 = 0; for (let j = 0; j < frames; j++) { m += on[j]; m2 += on[j] * on[j]; }
+    m /= frames; const thr = m + Math.sqrt(Math.max(0, m2 / frames - m * m)), gap = Math.max(1, Math.round(.1 / hopSec));
+    let cnt = 0, last = -gap;
+    for (let j = 1; j < frames - 1; j++) if (on[j] > thr && on[j] >= on[j - 1] && on[j] >= on[j + 1] && j - last >= gap) { cnt++; last = j; }
+    dens = clamp((cnt / (frames * hopSec) - .5) / 4.5);
   }
 
   // 4) хрома и яркость: окна по 4096 отсчётов
@@ -112,16 +163,19 @@ export function analyzeSamples(samples, sr) {
     modeConf = clamp(Math.abs(bMaj - bMin) * 4);
   }
   const centroid = centN ? centSum / centN : 1500;
-  return { bpm: bpm ? Math.max(50, Math.min(200, bpm)) : 0, energy: Math.round(energy * 100) / 100, mode, key: KEYS[key],
-    bright: Math.round(clamp((centroid - 600) / 2400) * 100) / 100, conf: Math.round(clamp((conf + modeConf) / 2) * 100) / 100 };
+  const outBpm = bpm ? Math.max(50, Math.min(200, bpm)) : 0, bright = r2(clamp((centroid - 600) / 2400));
+  return { bpm: outBpm, mode, key: KEYS[key], bright, loud: r2(loud), dens: r2(dens), conf: r2(clamp((conf + modeConf) / 2)),
+    energy: estimateEnergy({ bpm: outBpm, mode, loud, dens, bright }) };
 }
 
-/* Файл уже проверен checkAudio. Декодирование — средствами браузера. */
-export async function analyzeAudioFile(file) {
+/* Декодирование — средствами браузера (mp3, m4a/AAC, ogg, wav). */
+export async function analyzeAudioBuffer(arrayBuffer) {
   const Ctx = window.AudioContext || window.webkitAudioContext;
   const ctx = new Ctx();
   try {
-    const buf = await ctx.decodeAudioData(await file.arrayBuffer());
+    const buf = await ctx.decodeAudioData(arrayBuffer);
     return analyzeSamples(buf.getChannelData(0), buf.sampleRate);
   } finally { ctx.close(); }
 }
+/* Файл уже проверен checkAudio. */
+export const analyzeAudioFile = async file => analyzeAudioBuffer(await file.arrayBuffer());

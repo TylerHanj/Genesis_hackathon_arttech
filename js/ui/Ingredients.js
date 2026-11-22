@@ -40,7 +40,7 @@ export function Ingredients({ d }) {
   const light = [con != null && (con < .25 ? t('ing.soft') : con > .45 ? t('ing.contrasty') : null), lum > .6 ? t('ing.bright') : lum < .35 ? t('ing.dim') : null,
     A.ph.w > .05 ? t('ing.warm') : A.ph.w < -.05 ? t('ing.cool') : null].filter(Boolean);
   const hasSong = !!(s.link || s.fileName || s.title || s.artist);
-  const an = s.an, srcKey = an ? (an.src === 'audio' ? 'ing.src.audio' : 'ing.src.meta') : d.mood ? 'ing.src.mood' : null;
+  const an = s.an, srcKey = an ? 'ing.src.' + an.src : d.mood ? 'ing.src.mood' : null;
   const era = fx.era || eraOf(s.year);
   const day = parseLocalDate(d.date);
   const weekday = day ? day.toLocaleDateString(t.locale, { weekday: 'long' }) : null;
@@ -76,13 +76,13 @@ export function Ingredients({ d }) {
         <div class="song-line">
           ${s.cover ? html`<img class="cover" src=${s.cover} alt="" width="40" height="40" loading="lazy" referrerpolicy="no-referrer"/>` : html`<span class="cover ph" aria-hidden="true">♪</span>`}
           <span><b>${s.title || s.artist || s.fileName || t('player.title')}</b><br/>
-            <span class="src">${[s.title && s.artist, s.year, s.genre, srcKey && t(srcKey)].filter(Boolean).join(' · ')}</span></span>
+            <span class="src">${[s.title && s.artist, s.year, s.genre, srcKey && t(srcKey), an && an.dz && an.src === 'preview' && t('ing.dz')].filter(Boolean).join(' · ')}</span></span>
         </div>
         <div class="chips2">
           <${Chip} on=${true}>${A.sg.bpm} BPM<//>
           <${Chip} on=${true}>${A.maj ? t('form.major') : t('form.minor')}${an && an.key ? ' (' + an.key + ')' : ''}<//>
           <${Chip} on=${true}>${t('ing.energy', { n: Math.round(A.sg.energy * 100) })}<//>
-          ${an && an.src === 'audio' && html`<${Chip}>${an.bright > .5 ? t('ing.brightSound') : t('ing.darkSound')}<//>`}
+          ${an && (an.src === 'audio' || an.src === 'preview') && html`<${Chip}>${an.bright > .5 ? t('ing.brightSound') : t('ing.darkSound')}<//>`}
           ${era && html`<${Chip}>${t('ing.era', { era: t('era.' + era) })}<//>`}
         </div>
         <${Eff}><b>${t('ing.effMusic')}</b>${era ? html`; ${t('era.' + era)} — <b>${t('eraFx.' + era)}</b>` : ''}<//>`
